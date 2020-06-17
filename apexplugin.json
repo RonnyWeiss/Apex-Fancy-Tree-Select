@@ -1,0 +1,34 @@
+{
+    "name": "APEX FancyTree Select",
+    "version": "1.9.2",
+    "description": "This Plug-in is used to draw a FancyTree with select option. Selected items can be saved (the values) into different items.",
+    "keywords": ["oracle", "apex", "plugin", "region"],
+    "homepage": "https://github.com/RonnyWeiss/Apex-Fancy-Tree-Select",
+    "bugs": {
+        "url": "https://github.com/RonnyWeiss/Apex-Fancy-Tree-Select/issues",
+        "email": "wronny@gmx.de"
+    },
+    "license": "MIT",
+    "author": {
+        "name": "Ronny Weiß",
+        "email": "wronny@gmx.de",
+        "twitter": "ronny_weiss_",
+        "donationUrl": "https://www.paypal.me/RonnyW1"
+    },
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/RonnyWeiss/Apex-Fancy-Tree-Select.git"
+    },
+    "oracle": {
+        "versions": ["12.1.0.1", "12.2.0.1", "18.4.0.0", "19.0.0.0.0"],
+        "apex": {
+            "versions": ["5.1.3", "18.1.0.00.45", "18.2.0.00.12", "19.1.0.00.15", "19.2.0.00.18", "20.1.0.00.13"],
+            "plugin": {
+                "internalName": "APEX.FANCYTREE.SELECT",
+                "type": "region",
+                "demo": "https://apex.oracle.com/pls/apex/f?p=103428",
+                "previewImage": "https://github.com/RonnyWeiss/Apex-Fancy-Tree-Select/raw/master/screenshot.gif"
+            }
+        }
+    }
+}
