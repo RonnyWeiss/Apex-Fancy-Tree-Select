@@ -1,8 +1,8 @@
 var fancyTree = (function () {
     var featureInfo = {
-        name: "APEX-Fancy-Tree-Select",
-        version: "1.9.2.1",
-        info: {
+        feat: "APEX-Fancy-Tree-Select",
+        featInfo: {
+            version: "1.9.2.1",
             url: "https://github.com/RonnyWeiss",
             license: "MIT"
         }
@@ -39,21 +39,27 @@ var fancyTree = (function () {
         },
         debug: {
             info: function (pObj) {
-                if (featureInfo && util.varType(pObj) === "json") {
-                    pObj = $.extend(true, featureInfo, pObj);
-                }
                 if (util.isAPEX()) {
-                    apex.debug.info(pObj);
+                    var obj;
+                    if (featureInfo && util.varType(pObj) === "json") {
+                        obj = $.extend(true, {}, featureInfo, pObj);
+                    } else {
+                        obj = pObj;
+                    }
+                    apex.debug.info(obj);
                 }
             },
             error: function (pObj) {
+                var obj;
                 if (featureInfo && util.varType(pObj) === "json") {
-                    pObj = $.extend(true, featureInfo, pObj);
+                    obj = $.extend(true, {}, featureInfo, pObj);
+                } else {
+                    obj = pObj;
                 }
                 if (util.isAPEX()) {
-                    apex.debug.error(pObj);
+                    apex.debug.error(obj);
                 } else {
-                    console.error(pObj);
+                    console.error(obj);
                 }
             }
         },
@@ -91,11 +97,11 @@ var fancyTree = (function () {
                     console.error(targetConfig);
                 }
             } else {
-                tmpJSON = targetConfig;
+                tmpJSON = $.extend(true, {}, targetConfig);
             }
             /* try to merge with standard if any attribute is missing */
             try {
-                finalConfig = $.extend(true, srcConfig, tmpJSON);
+                finalConfig = $.extend(true, {}, srcConfig, tmpJSON);
             } catch (e) {
                 console.error('Error while try to merge 2 JSONs into standard JSON if any attribute is missing. Please check your Config JSON. Standard Config will be used.');
                 console.error(e);
@@ -251,7 +257,17 @@ var fancyTree = (function () {
         initTree: function (regionID, ajaxID, noDataMessage, errMessage, udConfigJSON, items2Submit, escapeHTML, searchItemName, activeNodeItemName) {
             util.debug.info({
                 "module": "initTree",
-                "arguments": arguments
+                "arguments": {
+                    "regionID": regionID,
+                    "ajaxID": ajaxID,
+                    "noDataMessage": noDataMessage,
+                    "errMessage": errMessage,
+                    "udConfigJSON": udConfigJSON,
+                    "items2Submit": items2Submit,
+                    "escapeHTML": escapeHTML,
+                    "searchItemName": searchItemName,
+                    "activeNodeItemName": activeNodeItemName
+                }
             });
 
             var configJSON = {};
