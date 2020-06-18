@@ -1,7 +1,14 @@
 var fancyTree = (function () {
-    var scriptVersion = "1.9.2";
+    var featureInfo = {
+        name: "APEX-Fancy-Tree-Select",
+        version: "1.9.2.1",
+        info: {
+            url: "https://github.com/RonnyWeiss",
+            license: "MIT"
+        }
+    };
     var util = {
-        version: "1.3.2",
+        version: "1.3.3",
         isDefinedAndNotNull: function (pInput) {
             if (typeof pInput !== "undefined" && pInput !== null && pInput != "") {
                 return true;
@@ -16,17 +23,37 @@ var fancyTree = (function () {
                 return false;
             }
         },
+        varType: function (pObj) {
+            if (typeof pObj === "object") {
+                var arrayConstructor = [].constructor;
+                var objectConstructor = ({}).constructor;
+                if (pObj.constructor === arrayConstructor) {
+                    return "array";
+                }
+                if (pObj.constructor === objectConstructor) {
+                    return "json";
+                }
+            } else {
+                return typeof pObj;
+            }
+        },
         debug: {
-            info: function (str) {
+            info: function (pObj) {
+                if (featureInfo && util.varType(pObj) === "json") {
+                    pObj = $.extend(true, featureInfo, pObj);
+                }
                 if (util.isAPEX()) {
-                    apex.debug.info(str);
+                    apex.debug.info(pObj);
                 }
             },
-            error: function (str) {
+            error: function (pObj) {
+                if (featureInfo && util.varType(pObj) === "json") {
+                    pObj = $.extend(true, featureInfo, pObj);
+                }
                 if (util.isAPEX()) {
-                    apex.debug.error(str);
+                    apex.debug.error(pObj);
                 } else {
-                    console.error(str);
+                    console.error(pObj);
                 }
             }
         },
@@ -223,15 +250,8 @@ var fancyTree = (function () {
     return {
         initTree: function (regionID, ajaxID, noDataMessage, errMessage, udConfigJSON, items2Submit, escapeHTML, searchItemName, activeNodeItemName) {
             util.debug.info({
-                "regionID": regionID,
-                "ajaxID": ajaxID,
-                "noDataMessage": noDataMessage,
-                "errMessage": errMessage,
-                "udConfigJSON": udConfigJSON,
-                "items2Submit": items2Submit,
-                "escapeHTML": escapeHTML,
-                "searchItemName": searchItemName,
-                "activeNodeItemName": activeNodeItemName
+                "module": "initTree",
+                "arguments": arguments
             });
 
             var configJSON = {};
@@ -349,6 +369,7 @@ var fancyTree = (function () {
                                     $(configJSON.regionID).empty();
                                     util.errorMessage.show(configJSON.regionID, configJSON.errMessage);
                                     util.debug.error({
+                                        "featureInfo": featureInfo,
                                         "module": "getData",
                                         "msg": "Error while try to get new data",
                                         "err": d
@@ -358,6 +379,7 @@ var fancyTree = (function () {
                             });
                     } catch (e) {
                         util.debug.error({
+                            "featureInfo": featureInfo,
                             "module": "getData",
                             "msg": "Error while try to get new data",
                             "err": e
@@ -424,6 +446,7 @@ var fancyTree = (function () {
                         $(configJSON.regionID).empty();
                         util.errorMessage.show(configJSON.regionID, configJSON.errMessage);
                         util.debug.error({
+                            "featureInfo": featureInfo,
                             "module": "prepareData",
                             "msg": "Error while try to prepare data for tree",
                             "err": e
@@ -639,10 +662,18 @@ var fancyTree = (function () {
                                         }
                                     }
                                 } else {
-                                    util.debug.error("type in not set in data");
+                                    util.debug.error({
+                                        "featureInfo": featureInfo,
+                                        "module": "setItems",
+                                        "msg": "type in not set in data"
+                                    });
                                 }
                             } else {
-                                util.debug.error("id is not defined in config json in types. Please check help for config json.");
+                                util.debug.error({
+                                    "featureInfo": featureInfo,
+                                    "module": "setItems",
+                                    "msg": "id is not defined in config json in types. Please check help for config json."
+                                });
                             }
                         });
                     });
@@ -657,11 +688,19 @@ var fancyTree = (function () {
                             }
 
                         } else {
-                            util.debug.error("storeItem is not defined in config json in types. Please check help for config json.");
+                            util.debug.error({
+                                "featureInfo": featureInfo,
+                                "module": "setItems",
+                                "msg": "storeItem is not defined in config json in types. Please check help for config json."
+                            });
                         }
                     });
                 } else {
-                    util.debug.error("types is not defined in config json. Please check help for config json.");
+                    util.debug.error({
+                        "featureInfo": featureInfo,
+                        "module": "setItems",
+                        "msg": "Types is not defined in config json but you have set setItemsOnInit: true or try to select a node. Please check help for config json."
+                    });
                 }
             }
 

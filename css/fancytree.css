@@ -151,7 +151,7 @@ span.fancytree-icon,
 span.fancytree-checkbox,
 span.fancytree-expander,
 span.fancytree-custom-icon {
-    margin-top: 0px;
+    margin-top: 2px;
     width: 16px;
     font-size: 16px;
 }
@@ -277,7 +277,7 @@ span.fancytree-title {
     display: inline-block;
     vertical-align: top;
     min-height: 10pt;
-    padding: 0 1px 0 1px;
+    padding: 2px 2px 3px 2px;
     margin: 0px 0 0 3px;
     border: 1px solid transparent;
     -webkit-border-radius: 0px;
@@ -622,19 +622,12 @@ span.fancytree-focused span.fancytree-title {
 
 span.fancytree-active span.fancytree-title {
     font-weight: bold;
-}
-
-span.fancytree-active:after {
-    content: "*";
-    color: red;
-    position: relative;
-    top: -3px;
-}
+    background: #ddd;
 }
 
 .fancytree-treefocus span.fancytree-active span.fancytree-title {
-    color: white;
-    background-color: #3875D7;
+    font-weight: bold;
+    background-color: #ccc;
 }
 
 /*******************************************************************************
