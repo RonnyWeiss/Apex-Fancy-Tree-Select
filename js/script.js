@@ -1,14 +1,17 @@
 var fancyTree = (function () {
-    var featureInfo = {
-        feat: "APEX-Fancy-Tree-Select",
-        featInfo: {
-            version: "2.0",
-            url: "https://github.com/RonnyWeiss",
-            license: "MIT"
-        }
-    };
     var util = {
-        version: "1.3.3",
+        /**********************************************************************************
+         ** required functions 
+         *********************************************************************************/
+        featureInfo: {
+            name: "APEX-Fancy-Tree-Select",
+            info: {
+                scriptVersion: "2.0",
+                utilVersion: "1.3.3",
+                url: "https://github.com/RonnyWeiss",
+                license: "MIT"
+            }
+        },
         isDefinedAndNotNull: function (pInput) {
             if (typeof pInput !== "undefined" && pInput !== null && pInput != "") {
                 return true;
@@ -38,31 +41,26 @@ var fancyTree = (function () {
             }
         },
         debug: {
-            info: function (pObj) {
-                if (util.isAPEX() && apex.debug.getLevel() > 2) {
-                    var obj;
-                    if (featureInfo && util.varType(pObj) === "json") {
-                        obj = $.extend(true, {}, featureInfo, pObj);
-                    } else {
-                        obj = pObj;
-                    }
-                    apex.debug.info(obj);
+            info: function () {
+                if (util.isAPEX()) {
+                    var arr = Array.from(arguments);
+                    arr.unshift(util.featureInfo);
+                    apex.debug.info.apply(this, arr);
                 }
             },
-            error: function (pObj) {
-                var obj;
-                if (featureInfo && util.varType(pObj) === "json") {
-                    obj = $.extend(true, {}, featureInfo, pObj);
-                } else {
-                    obj = pObj;
-                }
+            error: function () {
+                var arr = Array.from(arguments);
+                arr.unshift(util.featureInfo);
                 if (util.isAPEX()) {
-                    apex.debug.error(obj);
+                    apex.debug.error.apply(this, arr);
                 } else {
-                    console.error(obj);
+                    console.error.apply(this, arr);
                 }
             }
         },
+        /**********************************************************************************
+         ** optinal functions 
+         *********************************************************************************/
         convertJSON2LowerCase: function (obj) {
             try {
                 var output = {};
@@ -79,15 +77,10 @@ var fancyTree = (function () {
 
                 return output;
             } catch (e) {
-                var errLog = {
+                util.debug.error({
                     "msg": "Error while to lower json",
                     "err": e
-                };
-                if (util.debug.error) {
-                    util.debug.error(errLog);
-                } else {
-                    console.error(errLog);
-                }
+                });
                 return;
             }
         },
@@ -99,16 +92,11 @@ var fancyTree = (function () {
                 try {
                     tmpJSON = JSON.parse(targetConfig);
                 } catch (e) {
-                    var errLog = {
+                    util.debug.error({
                         "msg": "Error while try to parse targetConfig. Please check your Config JSON. Standard Config will be used.",
                         "err": e,
                         "targetConfig": targetConfig
-                    };
-                    if (util.debug.error) {
-                        util.debug.error(errLog);
-                    } else {
-                        console.error(errLog);
-                    }
+                    });
                 }
             } else {
                 tmpJSON = $.extend(true, {}, targetConfig);
@@ -118,16 +106,11 @@ var fancyTree = (function () {
                 finalConfig = $.extend(true, {}, srcConfig, tmpJSON);
             } catch (e) {
                 finalConfig = $.extend(true, {}, srcConfig);
-                var errLog = {
+                util.debug.error({
                     "msg": "Error while try to merge 2 JSONs into standard JSON if any attribute is missing. Please check your Config JSON. Standard Config will be used.",
                     "err": e,
                     "finalConfig": finalConfig
-                };
-                if (util.debug.error) {
-                    util.debug.error(errLog);
-                } else {
-                    console.error(errLog);
-                }
+                });
             }
             return finalConfig;
         },
@@ -136,24 +119,10 @@ var fancyTree = (function () {
                 if (apex.item(itemName) && apex.item(itemName).node != false) {
                     apex.item(itemName).setValue(value);
                 } else {
-                    var msg = "Please choose a set item. Because the value (" + value + ") can not be set on item (" + itemName + ")";
-                    if (util.debug.error) {
-                        util.debug.error({
-                            "msg": msg
-                        });
-                    } else {
-                        console.error(msg);
-                    }
+                    util.debug.error("Please choose a set item. Because the value (" + value + ") can not be set on item (" + itemName + ")");
                 }
             } else {
-                var msg = "Error while try to call apex.item";
-                if (util.debug.error) {
-                    util.debug.error({
-                        "msg": msg
-                    });
-                } else {
-                    console.error(msg);
-                }
+                util.debug.error("Error while try to call apex.item");
             }
         },
         getItemValue: function (itemName) {
@@ -165,24 +134,10 @@ var fancyTree = (function () {
                 if (apex.item(itemName) && apex.item(itemName).node != false) {
                     return apex.item(itemName).getValue();
                 } else {
-                    var msg = "Please choose a get item. Because the value could not be get from item(" + itemName + ")";
-                    if (util.debug.error) {
-                        util.debug.error({
-                            "msg": msg
-                        });
-                    } else {
-                        console.error(msg);
-                    }
+                    util.debug.error("Please choose a get item. Because the value could not be get from item(" + itemName + ")");
                 }
             } else {
-                var msg = "Error while try to call apex.item";
-                if (util.debug.error) {
-                    util.debug.error({
-                        "msg": msg
-                    });
-                } else {
-                    console.error(msg);
-                }
+                util.debug.error("Error while try to call apex.item");
             }
         },
         printDOMMessage: {
@@ -296,17 +251,10 @@ var fancyTree = (function () {
                 }
                 return objectCopy;
             } catch (e) {
-                var errLog = {
+                util.debug.error({
                     "msg": "Error while try to copy object",
                     "err": e
-                };
-                if (util.debug.error) {
-                    util.debug.error({
-                        "msg": errLog
-                    });
-                } else {
-                    console.error(errLog);
-                }
+                });
             }
         }
     };
