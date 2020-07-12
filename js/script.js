@@ -6,8 +6,8 @@ var fancyTree = (function () {
         featureInfo: {
             name: "APEX-Fancy-Tree-Select",
             info: {
-                scriptVersion: "2.0",
-                utilVersion: "1.3.3",
+                scriptVersion: "2.0.1",
+                utilVersion: "1.3.4",
                 url: "https://github.com/RonnyWeiss",
                 license: "MIT"
             }
@@ -43,14 +43,24 @@ var fancyTree = (function () {
         debug: {
             info: function () {
                 if (util.isAPEX()) {
-                    var arr = Array.from(arguments);
-                    arr.unshift(util.featureInfo);
+                    var i = 0;
+                    var arr = [];
+                    for (prop in arguments) {
+                        arr[i] = arguments[prop];
+                        i++;
+                    }
+                    arr.push(util.featureInfo);
                     apex.debug.info.apply(this, arr);
                 }
             },
             error: function () {
-                var arr = Array.from(arguments);
-                arr.unshift(util.featureInfo);
+                var i = 0;
+                var arr = [];
+                for (prop in arguments) {
+                    arr[i] = arguments[prop];
+                    i++;
+                }
+                arr.push(util.featureInfo);
                 if (util.isAPEX()) {
                     apex.debug.error.apply(this, arr);
                 } else {
@@ -185,7 +195,7 @@ var fancyTree = (function () {
             if (tabbed) {
                 window.open(link, "_blank");
             } else {
-                return window.location = link;
+                return window.parent.location.href = link;
             }
         },
         noDataMessage: {
