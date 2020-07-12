@@ -1,6 +1,6 @@
 {
     "name": "APEX FancyTree Select",
-    "version": "2.0",
+    "version": "2.0.1",
     "description": "This Plug-in is used to draw a FancyTree with select option. Selected items can be saved (the values) into different items.",
     "keywords": ["oracle", "apex", "plugin", "region"],
     "homepage": "https://github.com/RonnyWeiss/Apex-Fancy-Tree-Select",
