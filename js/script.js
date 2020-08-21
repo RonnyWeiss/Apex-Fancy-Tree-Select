@@ -6,7 +6,7 @@ var fancyTree = (function () {
         featureInfo: {
             name: "APEX-Fancy-Tree-Select",
             info: {
-                scriptVersion: "2.0.3",
+                scriptVersion: "2.0.4",
                 utilVersion: "1.3.5",
                 url: "https://github.com/RonnyWeiss",
                 license: "MIT"
@@ -266,6 +266,13 @@ var fancyTree = (function () {
                     "err": e
                 });
             }
+        },
+        getStrByteLength: function (pStr) {
+            if (pStr) {
+                var tmp = encodeURIComponent(pStr).match(/%[89ABab]/g);
+                return pStr.length + (tmp ? tmp.length : 0);
+            }
+            return 0;
         }
     };
 
@@ -409,13 +416,17 @@ var fancyTree = (function () {
                         if (configJSON.localStorage.enabled) {
                             if (configJSON.localStorage.type === "session") {
                                 if (sessionStorage.getItem(configJSON.localStorage.key)) {
-                                    var data = JSON.parse(sessionStorage.getItem(configJSON.localStorage.key));
+                                    var str = sessionStorage.getItem(configJSON.localStorage.key);
+                                    var oStr = LZString.decompress(str);
+                                    var data = JSON.parse(oStr);
                                     sucFunction(data);
                                     return;
                                 }
                             } else {
                                 if (localStorage.getItem(configJSON.localStorage.key)) {
-                                    var data = JSON.parse(localStorage.getItem(configJSON.localStorage.key));
+                                    var str = localStorage.getItem(configJSON.localStorage.key);
+                                    var oStr = LZString.decompress(str);
+                                    var data = JSON.parse(oStr);
                                     sucFunction(data);
                                     return;
                                 }
@@ -430,11 +441,18 @@ var fancyTree = (function () {
                                     sucFunction(pData);
                                     if (configJSON.localStorage.enabled) {
                                         try {
+                                            var str = JSON.stringify(pData, null, 0);
+                                            var cStr = LZString.compress(str);
                                             if (configJSON.localStorage.type === "session") {
-                                                sessionStorage.setItem(configJSON.localStorage.key, JSON.stringify(pData, null, 0));
+                                                sessionStorage.setItem(configJSON.localStorage.key, cStr);
                                             } else {
-                                                localStorage.setItem(configJSON.localStorage.key, JSON.stringify(pData, null, 0));
+                                                localStorage.setItem(configJSON.localStorage.key, cStr);
                                             }
+                                            util.debug.info({
+                                                "module": "getData",
+                                                "str": str,
+                                                "cStr": cStr
+                                            });
                                         } catch (e) {
                                             util.debug.info({
                                                 "module": "getData",
