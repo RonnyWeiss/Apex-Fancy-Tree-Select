@@ -6,8 +6,8 @@ var fancyTree = (function () {
         featureInfo: {
             name: "APEX-Fancy-Tree-Select",
             info: {
-                scriptVersion: "2.0.2",
-                utilVersion: "1.3.4",
+                scriptVersion: "2.0.3",
+                utilVersion: "1.3.5",
                 url: "https://github.com/RonnyWeiss",
                 license: "MIT"
             }
@@ -191,13 +191,6 @@ var fancyTree = (function () {
                 $(id).children('.dominfomessagediv').remove();
             }
         },
-        link: function (link, tabbed) {
-            if (tabbed) {
-                window.open(link, "_blank");
-            } else {
-                return window.parent.location.href = link;
-            }
-        },
         noDataMessage: {
             show: function (id, text) {
                 util.printDOMMessage.show(id, text, "fa-search");
@@ -212,6 +205,13 @@ var fancyTree = (function () {
             },
             hide: function (id) {
                 util.printDOMMessage.hide(id);
+            }
+        },
+        link: function (link, tabbed) {
+            if (tabbed) {
+                window.open(link, "_blank");
+            } else {
+                return window.parent.location.href = link;
             }
         },
         loader: {
@@ -297,6 +297,11 @@ var fancyTree = (function () {
                 "enableKeyBoard": true,
                 "enableQuicksearch": true,
                 "forceSelectionSet": true,
+                "localStorage": {
+                    "enabled": false,
+                    "type": "session",
+                    "clearOnLink": true
+                },
                 "markNodesWithChildren": false,
                 "markerModifier": "fam-plus fam-is-info",
                 "openParentOfActiveNode": true,
@@ -321,6 +326,15 @@ var fancyTree = (function () {
             configJSON.noDataMessage = noDataMessage;
             configJSON.errMessage = errMessage;
             configJSON.items2Submit = items2Submit;
+            configJSON.localStorage.key = regionID;
+
+            function clearLocalStorage() {
+                if (configJSON.localStorage.type === "session") {
+                    sessionStorage.removeItem(configJSON.localStorage.key);
+                } else {
+                    localStorage.removeItem(configJSON.localStorage.key);
+                }
+            }
 
             if (!isNaN(configJSON.animationDuration) && configJSON.animationDuration >= 0) {
                 configJSON.animationDuration = {
@@ -391,17 +405,50 @@ var fancyTree = (function () {
                 getData = function (sucFunction) {
                     util.loader.start(configJSON.regionID, true);
                     try {
+
+                        if (configJSON.localStorage.enabled) {
+                            if (configJSON.localStorage.type === "session") {
+                                if (sessionStorage.getItem(configJSON.localStorage.key)) {
+                                    var data = JSON.parse(sessionStorage.getItem(configJSON.localStorage.key));
+                                    sucFunction(data);
+                                    return;
+                                }
+                            } else {
+                                if (localStorage.getItem(configJSON.localStorage.key)) {
+                                    var data = JSON.parse(localStorage.getItem(configJSON.localStorage.key));
+                                    sucFunction(data);
+                                    return;
+                                }
+                            }
+                        }
+
                         apex.server.plugin(
                             configJSON.ajaxID, {
                                 pageItems: configJSON.items2Submit
                             }, {
-                                success: sucFunction,
+                                success: function (pData) {
+                                    sucFunction(pData);
+                                    if (configJSON.localStorage.enabled) {
+                                        try {
+                                            if (configJSON.localStorage.type === "session") {
+                                                sessionStorage.setItem(configJSON.localStorage.key, JSON.stringify(pData, null, 0));
+                                            } else {
+                                                localStorage.setItem(configJSON.localStorage.key, JSON.stringify(pData, null, 0));
+                                            }
+                                        } catch (e) {
+                                            util.debug.info({
+                                                "module": "getData",
+                                                "msg": "Error while try to store local cache. This could be because local cache is disabled in your browser or maximum sotrage of 5MB is exceeded.",
+                                                "err": e
+                                            });
+                                        }
+                                    }
+                                },
                                 error: function (d) {
                                     util.loader.stop(configJSON.regionID, true);
                                     $(configJSON.regionID).empty();
                                     util.errorMessage.show(configJSON.regionID, configJSON.errMessage);
                                     util.debug.error({
-                                        "featureInfo": featureInfo,
                                         "module": "getData",
                                         "msg": "Error while try to get new data",
                                         "err": d
@@ -411,7 +458,6 @@ var fancyTree = (function () {
                             });
                     } catch (e) {
                         util.debug.error({
-                            "featureInfo": featureInfo,
                             "module": "getData",
                             "msg": "Error while try to get new data",
                             "err": e
@@ -478,7 +524,6 @@ var fancyTree = (function () {
                         $(configJSON.regionID).empty();
                         util.errorMessage.show(configJSON.regionID, configJSON.errMessage);
                         util.debug.error({
-                            "featureInfo": featureInfo,
                             "module": "prepareData",
                             "msg": "Error while try to prepare data for tree",
                             "err": e
@@ -594,6 +639,9 @@ var fancyTree = (function () {
                             if (data.node && data.node.data) {
                                 var nodeData = data.node.data;
                                 if (util.isDefinedAndNotNull(nodeData.link)) {
+                                    if (configJSON.localStorage.enabled && configJSON.localStorage.clearOnLink) {
+                                        clearLocalStorage();
+                                    }
                                     util.link(nodeData.link);
                                 }
                             }
@@ -692,14 +740,12 @@ var fancyTree = (function () {
                                     }
                                 } else {
                                     util.debug.error({
-                                        "featureInfo": featureInfo,
                                         "module": "setItems",
                                         "msg": "type in not set in data"
                                     });
                                 }
                             } else {
                                 util.debug.error({
-                                    "featureInfo": featureInfo,
                                     "module": "setItems",
                                     "msg": "id is not defined in config json in types. Please check help for config json."
                                 });
@@ -718,7 +764,6 @@ var fancyTree = (function () {
 
                         } else {
                             util.debug.error({
-                                "featureInfo": featureInfo,
                                 "module": "setItems",
                                 "msg": "storeItem is not defined in config json in types. Please check help for config json."
                             });
@@ -726,7 +771,6 @@ var fancyTree = (function () {
                     });
                 } else {
                     util.debug.error({
-                        "featureInfo": featureInfo,
                         "module": "setItems",
                         "msg": "Types is not defined in config json but you have set setItemsOnInit: true or try to select a node. Please check help for config json."
                     });
@@ -771,9 +815,20 @@ var fancyTree = (function () {
 
             getData(drawTree);
 
+
+            /* bind clear local cache */
+            if (configJSON.localStorage.enabled) {
+                $(eventsBindSel).bind("clearlocalstorage", function () {
+                    clearLocalStorage();
+                });
+            }
+
             // bind dynamic action refresh
             $(eventsBindSel).bind("apexrefresh", function () {
                 if ($(configJSON.regionID).children('span').length == 0) {
+                    if (configJSON.localStorage.enabled) {
+                        clearLocalStorage();
+                    }
                     getData(updateTree);
                 }
             });
@@ -782,6 +837,9 @@ var fancyTree = (function () {
             if (configJSON.refresh > 0) {
                 setInterval(function () {
                     if ($(configJSON.regionID).children('span').length == 0) {
+                        if (configJSON.localStorage.enabled) {
+                            clearLocalStorage();
+                        }
                         getData(updateTree);
                     }
                 }, configJSON.refresh * 1000);
