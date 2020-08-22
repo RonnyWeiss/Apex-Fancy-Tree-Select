@@ -267,19 +267,19 @@ var fancyTree = (function () {
                 });
             }
         },
-        debounce: function (func, wait, immediate) {
+        debounce: function (pFunction, pWaitTime, pImmediate) {
             var timeout;
             return function () {
                 var context = this,
                     args = arguments;
                 var later = function () {
                     timeout = null;
-                    if (!immediate) func.apply(context, args);
+                    if (!pImmediate) pFunction.apply(context, args);
                 };
-                var callNow = immediate && !timeout;
+                var callNow = pImmediate && !timeout;
                 clearTimeout(timeout);
-                timeout = setTimeout(later, wait || 500);
-                if (callNow) func.apply(context, args);
+                timeout = setTimeout(later, pWaitTime || 300);
+                if (callNow) pFunction.apply(context, args);
             };
         }
     };
@@ -330,7 +330,7 @@ var fancyTree = (function () {
                     "hideUnmatched": true,
                     "debounce": {
                         "enabled": true,
-                        "time": 500
+                        "time": 400
                     }
                 },
                 "selectMode": 2,
