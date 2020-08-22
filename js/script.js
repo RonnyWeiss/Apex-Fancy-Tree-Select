@@ -6,7 +6,7 @@ var fancyTree = (function () {
         featureInfo: {
             name: "APEX-Fancy-Tree-Select",
             info: {
-                scriptVersion: "2.0.4",
+                scriptVersion: "2.0.5",
                 utilVersion: "1.3.5",
                 url: "https://github.com/RonnyWeiss",
                 license: "MIT"
@@ -267,12 +267,20 @@ var fancyTree = (function () {
                 });
             }
         },
-        getStrByteLength: function (pStr) {
-            if (pStr) {
-                var tmp = encodeURIComponent(pStr).match(/%[89ABab]/g);
-                return pStr.length + (tmp ? tmp.length : 0);
-            }
-            return 0;
+        debounce: function (func, wait, immediate) {
+            var timeout;
+            return function () {
+                var context = this,
+                    args = arguments;
+                var later = function () {
+                    timeout = null;
+                    if (!immediate) func.apply(context, args);
+                };
+                var callNow = immediate && !timeout;
+                clearTimeout(timeout);
+                timeout = setTimeout(later, wait || 500);
+                if (callNow) func.apply(context, args);
+            };
         }
     };
 
@@ -319,7 +327,11 @@ var fancyTree = (function () {
                     "leavesOnly": false,
                     "highlight": true,
                     "counter": true,
-                    "hideUnmatched": true
+                    "hideUnmatched": true,
+                    "debounce": {
+                        "enabled": true,
+                        "time": 500
+                    }
                 },
                 "selectMode": 2,
                 "setActiveNode": true,
@@ -681,7 +693,17 @@ var fancyTree = (function () {
                     });
 
                     if (util.isDefinedAndNotNull(searchItemName)) {
-                        $("#" + searchItemName).on("keyup change", function (e) {
+                        if (configJSON.search.debounce.enabled) {
+                            $("#" + searchItemName).keyup(util.debounce(function () {
+                                filterTree();
+                            }, configJSON.search.debounce.time));
+                        } else {
+                            $("#" + searchItemName).keyup(function () {
+                                filterTree();
+                            });
+                        }
+
+                        $("#" + searchItemName).on("change", function (e) {
                             filterTree();
                         });
 
