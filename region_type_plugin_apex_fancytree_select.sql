@@ -177,8 +177,8 @@ wwv_flow_api.create_plugin_attribute(
 ||'ld be set to item this settings need so be set to false</li>',
 '<li><b>localStorage (object):</b>',
 '<ul>',
-'<li><b>enabled (boolean)</b>: The Plug-in is able to store the received data from SQL Source in Client. The cache can be cleared by doing the following:<ul><li>Browser Tab is closed</li><li>New APEX session</li><li>Fire region refresh by Dynamic Acti'
-||'on</li><li>$("#YOUR_STATIC_REGION_ID").trigger("clearlocalstorage"); by JS</li></ul></li>',
+'<li><b>enabled (boolean)</b>: The Plug-in is able to store the received data from SQL Source in Client. To share local cache use the same static region id for the Plug-in Region. The cache can be cleared by doing the following:<ul><li>Browser Tab is '
+||'closed</li><li>New APEX session</li><li>Fire region refresh by Dynamic Action</li><li>$("#YOUR_STATIC_REGION_ID").trigger("clearlocalstorage"); by JS</li></ul></li>',
 '<li><b>clearOnLink (boolean)</b>: clear cache when click on link</li>',
 '</ul>',
 '</li>',
