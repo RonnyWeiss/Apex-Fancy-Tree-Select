@@ -372,7 +372,7 @@ var fancyTree = (function () {
                 "forceSelectionSet": true,
                 "localStorage": {
                     "enabled": false,
-                    "clearOnLink": true
+                    "clearOnLink": false
                 },
                 "markNodesWithChildren": false,
                 "markerModifier": "fam-plus fam-is-info",
