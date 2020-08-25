@@ -6,7 +6,7 @@ var fancyTree = (function () {
         featureInfo: {
             name: "APEX-Fancy-Tree-Select",
             info: {
-                scriptVersion: "2.1",
+                scriptVersion: "2.1.1",
                 utilVersion: "1.3.5",
                 url: "https://github.com/RonnyWeiss",
                 license: "MIT"
@@ -343,7 +343,7 @@ var fancyTree = (function () {
     };
 
     return {
-        initTree: function (regionID, ajaxID, noDataMessage, errMessage, udConfigJSON, items2Submit, escapeHTML, searchItemName, activeNodeItemName) {
+        initTree: function (regionID, ajaxID, noDataMessage, errMessage, udConfigJSON, items2Submit, escapeHTML, searchItemName, activeNodeItemName, pLocalStorage, pLocalStorageValid) {
             util.debug.info({
                 "module": "initTree",
                 "arguments": {
@@ -355,7 +355,9 @@ var fancyTree = (function () {
                     "items2Submit": items2Submit,
                     "escapeHTML": escapeHTML,
                     "searchItemName": searchItemName,
-                    "activeNodeItemName": activeNodeItemName
+                    "activeNodeItemName": activeNodeItemName,
+                    "pLocalStorage": pLocalStorage,
+                    "pLocalStorageValid": pLocalStorageValid
                 }
             });
 
@@ -370,10 +372,6 @@ var fancyTree = (function () {
                 "enableKeyBoard": true,
                 "enableQuicksearch": true,
                 "forceSelectionSet": true,
-                "localStorage": {
-                    "enabled": false,
-                    "clearOnLink": false
-                },
                 "markNodesWithChildren": false,
                 "markerModifier": "fam-plus fam-is-info",
                 "openParentOfActiveNode": true,
@@ -402,6 +400,8 @@ var fancyTree = (function () {
             configJSON.noDataMessage = noDataMessage;
             configJSON.errMessage = errMessage;
             configJSON.items2Submit = items2Submit;
+            configJSON.localStorage = {};
+            configJSON.localStorage.enabled = (pLocalStorage === 'Y') ? true : false;
 
             if (configJSON.localStorage.enabled) {
                 configJSON.session = $v('pInstance');
@@ -413,6 +413,10 @@ var fancyTree = (function () {
                     "plugin": util.featureInfo.name,
                     "session": configJSON.session
                 }, null, 0);
+
+                if (pLocalStorageValid != 'Y') {
+                    util.localStorage.remove(configJSON.localStorage.keyFinal, configJSON.localStorage.type);
+                }
 
                 /* cleanup old storage sessions */
                 if (util.localStorage.check) {
@@ -743,9 +747,6 @@ var fancyTree = (function () {
                             if (data.node && data.node.data) {
                                 var nodeData = data.node.data;
                                 if (util.isDefinedAndNotNull(nodeData.link)) {
-                                    if (configJSON.localStorage.enabled && configJSON.localStorage.clearOnLink) {
-                                        util.localStorage.remove(configJSON.localStorage.keyFinal, configJSON.localStorage.type);
-                                    }
                                     util.link(nodeData.link);
                                 }
                             }
@@ -928,14 +929,6 @@ var fancyTree = (function () {
             var eventsBindSel = "#" + regionID.substring(4);
 
             getData(drawTree);
-
-
-            /* bind clear local cache */
-            if (configJSON.localStorage.enabled) {
-                $(eventsBindSel).bind("clearlocalstorage", function () {
-                    util.localStorage.remove(configJSON.localStorage.keyFinal, configJSON.localStorage.type);
-                });
-            }
 
             // bind dynamic action refresh
             $(eventsBindSel).bind("apexrefresh", function () {
