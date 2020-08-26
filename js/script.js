@@ -6,7 +6,7 @@ var fancyTree = (function () {
         featureInfo: {
             name: "APEX-Fancy-Tree-Select",
             info: {
-                scriptVersion: "2.1.1",
+                scriptVersion: "2.1.2",
                 utilVersion: "1.3.5",
                 url: "https://github.com/RonnyWeiss",
                 license: "MIT"
@@ -343,7 +343,7 @@ var fancyTree = (function () {
     };
 
     return {
-        initTree: function (regionID, ajaxID, noDataMessage, errMessage, udConfigJSON, items2Submit, escapeHTML, searchItemName, activeNodeItemName, pLocalStorage, pLocalStorageValid) {
+        initTree: function (regionID, ajaxID, noDataMessage, errMessage, udConfigJSON, items2Submit, escapeHTML, searchItemName, activeNodeItemName, pLocalStorage, pLocalStorageVersion) {
             util.debug.info({
                 "module": "initTree",
                 "arguments": {
@@ -357,7 +357,7 @@ var fancyTree = (function () {
                     "searchItemName": searchItemName,
                     "activeNodeItemName": activeNodeItemName,
                     "pLocalStorage": pLocalStorage,
-                    "pLocalStorageValid": pLocalStorageValid
+                    "pLocalStorageVersion": pLocalStorageVersion
                 }
             });
 
@@ -404,19 +404,17 @@ var fancyTree = (function () {
             configJSON.localStorage.enabled = (pLocalStorage === 'Y') ? true : false;
 
             if (configJSON.localStorage.enabled) {
-                configJSON.session = $v('pInstance');
+                configJSON.session = util.getItemValue('pInstance');
+                configJSON.version = pLocalStorageVersion;
                 configJSON.localStorage.key = regionID;
                 configJSON.localStorage.type = "session";
 
                 configJSON.localStorage.keyFinal = JSON.stringify({
                     "key": configJSON.localStorage.key,
                     "plugin": util.featureInfo.name,
-                    "session": configJSON.session
+                    "session": configJSON.session,
+                    "version": configJSON.version
                 }, null, 0);
-
-                if (pLocalStorageValid != 'Y') {
-                    util.localStorage.remove(configJSON.localStorage.keyFinal, configJSON.localStorage.type);
-                }
 
                 /* cleanup old storage sessions */
                 if (util.localStorage.check) {
@@ -424,11 +422,11 @@ var fancyTree = (function () {
                         if (i.substring(0, 1) === "{") {
                             try {
                                 var dat = JSON.parse(i);
-                                if (dat.plugin == util.featureInfo.name && dat.key == configJSON.localStorage.key && dat.session != configJSON.session) {
+                                if (dat.plugin == util.featureInfo.name && dat.key == configJSON.localStorage.key && (dat.session != configJSON.session || dat.version != configJSON.version)) {
                                     util.localStorage.remove(i);
                                 }
                             } catch (e) {
-                                util.debug.erro({
+                                util.debug.error({
                                     "module": "initTree",
                                     "msg": "Error while try to parse local storage key json",
                                     "err": e
