@@ -1,6 +1,6 @@
  # Apex-Fancy-Tree-Select
  
- ![](https://img.shields.io/badge/ORACLE-APEX-success.svg) ![](https://img.shields.io/badge/Plug--in_Type-Region-orange.svg) ![](https://img.shields.io/badge/Avaiable%20for%20APEX-5.1.3%20or%20above-blue)
+![](https://img.shields.io/badge/ORACLE-APEX-success.svg) ![](https://img.shields.io/badge/Plug--in_Type-Region-orange.svg) ![](https://img.shields.io/badge/Avaiable%20for%20APEX-5.1.3%20or%20above-blue)
 
 ![Screenshot](https://github.com/RonnyWeiss/Apex-Fancy-Tree-Select/blob/master/screenshot.gif?raw=true)
 
