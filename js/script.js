@@ -6,7 +6,7 @@ var fancyTree = (function () {
         featureInfo: {
             name: "APEX-Fancy-Tree-Select",
             info: {
-                scriptVersion: "2.1.2",
+                scriptVersion: "2.1.3",
                 utilVersion: "1.3.5",
                 url: "https://github.com/RonnyWeiss",
                 license: "MIT"
