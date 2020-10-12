@@ -6,7 +6,7 @@ var fancyTree = (function () {
         featureInfo: {
             name: "APEX-Fancy-Tree-Select",
             info: {
-                scriptVersion: "2.1.3",
+                scriptVersion: "2.1.4",
                 utilVersion: "1.3.5",
                 url: "https://github.com/RonnyWeiss",
                 license: "MIT"
@@ -673,6 +673,8 @@ var fancyTree = (function () {
                         nodata: false,
                         activeVisible: configJSON.openParentOfActiveNode,
                         escapeTitles: configJSON.escapeHTML,
+                        focusOnSelect: true,
+                        titlesTabbable: true,
                         checkbox: configJSON.enableCheckBox,
                         toggleEffect: configJSON.animationDuration,
                         selectMode: configJSON.selectMode,
@@ -746,6 +748,8 @@ var fancyTree = (function () {
                                 var nodeData = data.node.data;
                                 if (util.isDefinedAndNotNull(nodeData.link)) {
                                     util.link(nodeData.link);
+                                } else if (data.node.checkbox === 1) {
+                                    data.node.toggleSelected();
                                 }
                             }
                             if (configJSON.setActiveNode) {
