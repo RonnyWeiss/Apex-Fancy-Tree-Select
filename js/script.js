@@ -6,7 +6,7 @@ var fancyTree = (function () {
         featureInfo: {
             name: "APEX-Fancy-Tree-Select",
             info: {
-                scriptVersion: "2.1.4.2",
+                scriptVersion: "2.1.4.3",
                 utilVersion: "1.3.5",
                 url: "https://github.com/RonnyWeiss",
                 license: "MIT"
@@ -786,15 +786,19 @@ var fancyTree = (function () {
                         }
                         setItems();
                     },
-                    beforeActivate: function (event, data) {
-                        if (data.node && data.node.data) {
-                            var nodeData = data.node.data;
-                            if (util.isDefinedAndNotNull(nodeData.link)) {
-                                util.link(nodeData.link);
-                            } else if (data.node.checkbox === 1) {
-                                data.node.toggleSelected();
+                    click: function (event, data) {
+                        if (data.targetType === "title" || data.targetType === "icon") {
+                            if (data.node && data.node.data) {
+                                var nodeData = data.node.data;
+                                if (util.isDefinedAndNotNull(nodeData.link)) {
+                                    util.link(nodeData.link);
+                                } else if (data.node.checkbox === 1) {
+                                    data.node.toggleSelected();
+                                }
                             }
                         }
+                    },
+                    beforeActivate: function (event, data) {
                         if (configJSON.setActiveNode) {
                             return true;
                         } else {
