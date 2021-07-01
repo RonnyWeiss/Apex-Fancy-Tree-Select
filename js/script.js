@@ -6,7 +6,7 @@ var fancyTree = (function () {
         featureInfo: {
             name: "APEX-Fancy-Tree-Select",
             info: {
-                scriptVersion: "2.1.4.1",
+                scriptVersion: "2.1.4.2",
                 utilVersion: "1.3.5",
                 url: "https://github.com/RonnyWeiss",
                 license: "MIT"
@@ -343,7 +343,7 @@ var fancyTree = (function () {
     };
 
     return {
-        initTree: function (regionID, ajaxID, noDataMessage, errMessage, udConfigJSON, items2Submit, escapeHTML, searchItemName, activeNodeItemName, pLocalStorage, pLocalStorageVersion) {
+        initTree: function (regionID, ajaxID, noDataMessage, errMessage, udConfigJSON, items2Submit, escapeHTML, searchItemName, activeNodeItemName, pLocalStorage, pLocalStorageVersion, pExpandedNodesItem) {
             util.debug.info({
                 "module": "initTree",
                 "arguments": {
@@ -357,7 +357,8 @@ var fancyTree = (function () {
                     "searchItemName": searchItemName,
                     "activeNodeItemName": activeNodeItemName,
                     "pLocalStorage": pLocalStorage,
-                    "pLocalStorageVersion": pLocalStorageVersion
+                    "pLocalStorageVersion": pLocalStorageVersion,
+                    "pExpandedNodesItem": pExpandedNodesItem
                 }
             });
 
@@ -400,6 +401,7 @@ var fancyTree = (function () {
             configJSON.noDataMessage = noDataMessage;
             configJSON.errMessage = errMessage;
             configJSON.items2Submit = items2Submit;
+            configJSON.expandedNodesItem = pExpandedNodesItem;
             configJSON.localStorage = {};
             configJSON.localStorage.enabled = (pLocalStorage === 'Y') ? true : false;
 
@@ -450,7 +452,11 @@ var fancyTree = (function () {
                 configJSON.escapeHTML = true;
             }
 
-            var treeSort = function (options) {
+            function getTree() {
+                return $(configJSON.regionID).fancytree('getTree');
+            }
+
+            function treeSort(options) {
                 var cfi, e, i, id, o, pid, rfi, ri, thisid, _i, _j, _len, _len1, _ref, _ref1;
                 id = options.id || "id";
                 pid = options.parent_id || "parent_id";
@@ -482,352 +488,389 @@ var fancyTree = (function () {
                     }
                 }
                 return o;
-            },
-                buildTree = function (options) {
-                    var children, e, id, o, pid, temp, _i, _len, _ref;
-                    id = options.id || "id";
-                    pid = options.parent_id || "parent_id";
-                    children = options.children || "children";
-                    temp = {};
-                    o = [];
-                    _ref = options.q;
-                    for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-                        e = _ref[_i];
-                        e[children] = [];
-                        temp[e[id]] = e;
-                        if (temp[e[pid]] != null) {
-                            temp[e[pid]][children].push(e);
-                        } else {
-                            o.push(e);
-                        }
+            }
+            function buildTree(options) {
+                var children, e, id, o, pid, temp, _i, _len, _ref;
+                id = options.id || "id";
+                pid = options.parent_id || "parent_id";
+                children = options.children || "children";
+                temp = {};
+                o = [];
+                _ref = options.q;
+                for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+                    e = _ref[_i];
+                    e[children] = [];
+                    temp[e[id]] = e;
+                    if (temp[e[pid]] != null) {
+                        temp[e[pid]][children].push(e);
+                    } else {
+                        o.push(e);
                     }
-                    return o;
-                },
-                getData = function (sucFunction, isUpdate) {
-                    util.loader.start(configJSON.regionID, true);
-                    try {
-                        if (configJSON.localStorage.enabled) {
-                            var storedStr = util.localStorage.get(configJSON.localStorage.keyFinal, configJSON.localStorage.type);
-                            if (storedStr) {
-                                var decompressedStr = LZString.decompress(storedStr);
-                                var data = JSON.parse(decompressedStr);
-                                util.debug.info({
-                                    "module": "getData",
-                                    "msg": "Read string from local storage",
-                                    "localStorageKey": configJSON.localStorage.keyFinal,
-                                    "localStorageStr": decompressedStr,
-                                    "localStorageCompressedStr": storedStr
-                                });
-                                sucFunction(data);
-                                if (isUpdate) {
-                                    $(eventsBindSel).trigger("apexafterrefresh", data);
-                                }
-                                return;
-                            }
-                        }
+                }
+                return o;
+            }
 
-                        apex.server.plugin(
-                            configJSON.ajaxID, {
-                            pageItems: configJSON.items2Submit
-                        }, {
-                            success: function (pData) {
-                                sucFunction(pData);
-                                if (configJSON.localStorage.enabled) {
-                                    try {
-                                        var str = JSON.stringify(pData, null, 0);
-                                        var cStr = LZString.compress(str);
-                                        util.localStorage.set(configJSON.localStorage.keyFinal, cStr, configJSON.localStorage.type);
-                                        util.debug.info({
-                                            "module": "getData",
-                                            "msg": "Write string to local storage",
-                                            "localStorageKey": configJSON.localStorage.keyFinal,
-                                            "localStorageStr": str,
-                                            "localStorageCompressedStr": cStr
-                                        });
-                                    } catch (e) {
-                                        util.debug.info({
-                                            "module": "getData",
-                                            "msg": "Error while try to store local cache. This could be because local cache is disabled in your browser or maximum sotrage of 5MB is exceeded.",
-                                            "err": e
-                                        });
-                                    }
-                                }
-                                if (isUpdate) {
-                                    $(eventsBindSel).trigger("apexafterrefresh", pData);
-                                }
-                            },
-                            error: function (d) {
-                                util.loader.stop(configJSON.regionID, true);
-                                $(configJSON.regionID).empty();
-                                util.errorMessage.show(configJSON.regionID, configJSON.errMessage);
-                                util.debug.error({
-                                    "module": "getData",
-                                    "msg": "Error while try to get new data",
-                                    "err": d
-                                });
-                                if (isUpdate) {
-                                    $(eventsBindSel).trigger("apexafterrefresh");
-                                }
-                            },
-                            dataType: "json"
-                        });
-                    } catch (e) {
-                        util.debug.error({
-                            "module": "getData",
-                            "msg": "Error while try to get new data",
-                            "err": e
-                        });
-                        if (isUpdate) {
-                            $(eventsBindSel).trigger("apexafterrefresh");
-                        }
-                    }
-                },
-                sortNumber = function (a, b) {
-                    return a - b;
-                },
-                prepareData = function (data) {
-                    try {
-                        // lower json from sql
-                        var _root = util.convertJSON2LowerCase(data.row);
-
-                        var activeID;
-                        var isActivated = false;
-                        if (util.isDefinedAndNotNull(activeNodeItemName)) {
-                            activeID = util.getItemValue(activeNodeItemName);
-                        } else {
-                            configJSON.setActiveNode = false;
-                        }
-
-                        // fill up icons
-                        $.each(_root, function (i, val) {
-                            if (configJSON.typeSettings) {
-                                configJSON.typeSettings.forEach(function (obj) {
-                                    if (obj.id == val.type) {
-                                        if (!val.icon || val.icon.length == 0) {
-                                            val.icon = "fa " + obj.icon;
-                                        }
-                                    }
-                                });
-                            }
-
-                            if (!isActivated && activeID && (val.id == activeID)) {
-                                val.active = 1;
-                                /* only one node can be active */
-                                isActivated = true;
-                            }
-                        });
-
-                        // restructure json for fancyTree
-                        var dataArr = [];
-
-                        for (var i in _root) {
-                            dataArr.push(_root[i]);
-                        }
-                        _root = treeSort({
-                            q: dataArr
-                        });
-
-                        _root = buildTree({
-                            q: _root
-                        });
-                        if (data.row && data.row.length > 0) {
-                            util.noDataMessage.hide(configJSON.regionID);
-                        } else {
-                            util.noDataMessage.hide(configJSON.regionID);
-                            util.noDataMessage.show(configJSON.regionID, configJSON.noDataMessage);
-                        }
-                        return _root;
-                    } catch (e) {
-                        util.loader.stop(configJSON.regionID, true);
-                        $(configJSON.regionID).empty();
-                        util.errorMessage.show(configJSON.regionID, configJSON.errMessage);
-                        util.debug.error({
-                            "module": "prepareData",
-                            "msg": "Error while try to prepare data for tree",
-                            "err": e
-                        });
-                    }
-                },
-                updateTree = function (data) {
-                    var _root = prepareData(data);
-                    var tree = $(configJSON.regionID).fancytree('getTree');
-                    tree.reload(_root);
-
-                    if (configJSON.autoExpand2Level > 0) {
-                        $(configJSON.regionID).fancytree("getRootNode").visit(function (node) {
-                            if (node.getLevel() < configJSON.autoExpand2Level) {
-                                node.setExpanded(true);
-                            }
-                        });
-                    }
-
-                    if (util.isDefinedAndNotNull(searchItemName)) {
-                        var startVal = util.getItemValue(searchItemName);
-                        if (util.isDefinedAndNotNull(startVal) && startVal.length > 0) {
-                            filterTree();
-                        }
-                    }
-
-                    markNodesWihChildren();
-                    openParentOfSelected();
-                    util.loader.stop(configJSON.regionID, true);
-                },
-                drawTree = function (data) {
-                    var _root = prepareData(data);
-
-                    // draw fancyTree
-                    $(configJSON.regionID).fancytree({
-                        extensions: ["glyph", "filter"],
-                        quicksearch: true,
-                        clones: {
-                            highlightClones: true
-                        },
-                        nodata: false,
-                        activeVisible: configJSON.openParentOfActiveNode,
-                        escapeTitles: configJSON.escapeHTML,
-                        focusOnSelect: true,
-                        titlesTabbable: true,
-                        checkbox: configJSON.enableCheckBox,
-                        toggleEffect: configJSON.animationDuration,
-                        selectMode: configJSON.selectMode,
-                        debugLevel: 0, // 0:quiet, 1:normal, 2:debug
-                        keyboard: configJSON.enableKeyBoard, // Support keyboard navigation.
-                        quicksearch: configJSON.enableQuicksearch, // Navigate to next node by typing the first letters.
-                        glyph: {
-                            preset: "awesome4",
-                            map: {
-                                _addClass: "fa",
-                                checkbox: configJSON.checkbox,
-                                checkboxSelected: configJSON.checkboxSelected,
-                                checkboxUnknown: configJSON.checkboxUnknown,
-                                dragHelper: "fa-arrow-right",
-                                dropMarker: "fa-long-arrow-right",
-                                error: "fa-warning",
-                                expanderClosed: "fa-caret-right",
-                                expanderLazy: "fa-angle-right",
-                                expanderOpen: "fa-caret-down",
-                                loading: "fa-spinner fa-pulse",
-                                nodata: "fa-meh-o",
-                                noExpander: "",
-                                radio: "fa-circle-thin",
-                                radioSelected: "fa-circle",
-                                doc: "fa-file-o",
-                                docOpen: "fa-file-o",
-                                folder: "fa-folder-o",
-                                folderOpen: "fa-folder-open-o"
-                            }
-                        },
-                        filter: {
-                            autoApply: true, // Re-apply last filter if lazy data is loaded
-                            autoExpand: configJSON.search.autoExpand, // Expand all branches that contain matches while filtered
-                            counter: configJSON.search.counter, // Show a badge with number of matching child nodes near parent icons
-                            fuzzy: false, // Match single characters in order, e.g. 'fb' will match 'FooBar'
-                            hideExpandedCounter: true, // Hide counter badge if parent is expanded
-                            hideExpanders: false, // Hide expanders if all child nodes are hidden by filter
-                            highlight: configJSON.search.highlight, // Highlight matches by wrapping inside <mark> tags
-                            leavesOnly: configJSON.search.leavesOnly, // Match end nodes only
-                            nodata: false, // Display a 'no data' status node if result is empty
-                            mode: configJSON.search.hideUnmatched ? "hide" : "dimm" // Grayout unmatched nodes (pass "hide" to remove unmatched node instead)
-                        },
-                        source: _root,
-                        init: function (event, data) {
-                            markNodesWihChildren();
-                            openParentOfSelected();
-                            if (configJSON.setItemsOnInit) {
-                                setItems();
-                            }
-                        },
-                        expand: function (event, data) {
-                            markNodesWihChildren();
-                        },
-                        // if select an item check different types from config json and set value to the items
-                        select: function (event, data) {
+            function getData(sucFunction, isUpdate) {
+                util.loader.start(configJSON.regionID, true);
+                try {
+                    if (configJSON.localStorage.enabled) {
+                        var storedStr = util.localStorage.get(configJSON.localStorage.keyFinal, configJSON.localStorage.type);
+                        if (storedStr) {
+                            var decompressedStr = LZString.decompress(storedStr);
+                            var data = JSON.parse(decompressedStr);
                             util.debug.info({
-                                "selectEvent": event,
-                                "selectData": data
+                                "module": "getData",
+                                "msg": "Read string from local storage",
+                                "localStorageKey": configJSON.localStorage.keyFinal,
+                                "localStorageStr": decompressedStr,
+                                "localStorageCompressedStr": storedStr
                             });
-                            markNodesWihChildren(true);
-                            if (data.node.extraClasses != '') {
-                                if ($(data.node.li).find('.fancytree-node').hasClass('fancytree-selected'))
-                                    $('.' + data.node.extraClasses).addClass('fancytree-selected');
-                                else
-                                    $('.' + data.node.extraClasses).removeClass('fancytree-selected');
+                            sucFunction(data);
+                            if (isUpdate) {
+                                $(eventsBindSel).trigger("apexafterrefresh", data);
                             }
-                            setItems();
-                        },
-                        beforeActivate: function (event, data) {
-                            if (data.node && data.node.data) {
-                                var nodeData = data.node.data;
-                                if (util.isDefinedAndNotNull(nodeData.link)) {
-                                    util.link(nodeData.link);
-                                } else if (data.node.checkbox === 1) {
-                                    data.node.toggleSelected();
+                            return;
+                        }
+                    }
+
+                    apex.server.plugin(
+                        configJSON.ajaxID, {
+                        pageItems: configJSON.items2Submit
+                    }, {
+                        success: function (pData) {
+                            sucFunction(pData);
+                            if (configJSON.localStorage.enabled) {
+                                try {
+                                    var str = JSON.stringify(pData, null, 0);
+                                    var cStr = LZString.compress(str);
+                                    util.localStorage.set(configJSON.localStorage.keyFinal, cStr, configJSON.localStorage.type);
+                                    util.debug.info({
+                                        "module": "getData",
+                                        "msg": "Write string to local storage",
+                                        "localStorageKey": configJSON.localStorage.keyFinal,
+                                        "localStorageStr": str,
+                                        "localStorageCompressedStr": cStr
+                                    });
+                                } catch (e) {
+                                    util.debug.info({
+                                        "module": "getData",
+                                        "msg": "Error while try to store local cache. This could be because local cache is disabled in your browser or maximum sotrage of 5MB is exceeded.",
+                                        "err": e
+                                    });
                                 }
                             }
-                            if (configJSON.setActiveNode) {
-                                return true;
-                            } else {
-                                return false;
+                            if (isUpdate) {
+                                $(eventsBindSel).trigger("apexafterrefresh", pData);
                             }
                         },
-                        activate: function (event, data) {
-                            if (data.node && data.node.data) {
-                                var nodeData = data.node.data;
-                                if (util.isDefinedAndNotNull(nodeData.value)) {
-                                    util.setItemValue(activeNodeItemName, nodeData.value);
-                                }
+                        error: function (d) {
+                            util.loader.stop(configJSON.regionID, true);
+                            $(configJSON.regionID).empty();
+                            util.errorMessage.show(configJSON.regionID, configJSON.errMessage);
+                            util.debug.error({
+                                "module": "getData",
+                                "msg": "Error while try to get new data",
+                                "err": d
+                            });
+                            if (isUpdate) {
+                                $(eventsBindSel).trigger("apexafterrefresh");
                             }
-                            markNodesWihChildren(true);
+                        },
+                        dataType: "json"
+                    });
+                } catch (e) {
+                    util.debug.error({
+                        "module": "getData",
+                        "msg": "Error while try to get new data",
+                        "err": e
+                    });
+                    if (isUpdate) {
+                        $(eventsBindSel).trigger("apexafterrefresh");
+                    }
+                }
+            }
+
+            function sortNumber(a, b) {
+                return a - b;
+            }
+            function prepareData(data) {
+                try {
+                    // lower json from sql
+                    var _root = util.convertJSON2LowerCase(data.row);
+
+                    var activeID;
+                    var isActivated = false;
+                    if (util.isDefinedAndNotNull(activeNodeItemName)) {
+                        activeID = util.getItemValue(activeNodeItemName);
+                    } else {
+                        configJSON.setActiveNode = false;
+                    }
+
+                    // fill up icons
+                    $.each(_root, function (i, val) {
+                        if (configJSON.typeSettings) {
+                            configJSON.typeSettings.forEach(function (obj) {
+                                if (obj.id == val.type) {
+                                    if (!val.icon || val.icon.length == 0) {
+                                        val.icon = "fa " + obj.icon;
+                                    }
+                                }
+                            });
+                        }
+
+                        if (!isActivated && activeID && (val.id == activeID)) {
+                            val.active = 1;
+                            /* only one node can be active */
+                            isActivated = true;
                         }
                     });
 
-                    if (util.isDefinedAndNotNull(searchItemName)) {
-                        if (configJSON.search.debounce.enabled) {
-                            $("#" + searchItemName).keyup(util.debounce(function () {
-                                filterTree();
-                            }, configJSON.search.debounce.time));
-                        } else {
-                            $("#" + searchItemName).keyup(function () {
-                                filterTree();
-                            });
-                        }
+                    // restructure json for fancyTree
+                    var dataArr = [];
 
-                        $("#" + searchItemName).on("change", function (e) {
-                            filterTree();
-                        });
-
-                        var startVal = util.getItemValue(searchItemName);
-                        if (util.isDefinedAndNotNull(startVal) && startVal.length > 0) {
-                            filterTree();
-                        }
+                    for (var i in _root) {
+                        dataArr.push(_root[i]);
                     }
+                    _root = treeSort({
+                        q: dataArr
+                    });
 
-                    if (configJSON.autoExpand2Level > 0) {
-                        $(configJSON.regionID).fancytree("getRootNode").visit(function (node) {
-                            if (node.getLevel() < configJSON.autoExpand2Level) {
-                                node.setExpanded(true);
-                            }
-                        });
+                    _root = buildTree({
+                        q: _root
+                    });
+                    if (data.row && data.row.length > 0) {
+                        util.noDataMessage.hide(configJSON.regionID);
+                    } else {
+                        util.noDataMessage.hide(configJSON.regionID);
+                        util.noDataMessage.show(configJSON.regionID, configJSON.noDataMessage);
                     }
-
+                    return _root;
+                } catch (e) {
                     util.loader.stop(configJSON.regionID, true);
+                    $(configJSON.regionID).empty();
+                    util.errorMessage.show(configJSON.regionID, configJSON.errMessage);
+                    util.debug.error({
+                        "module": "prepareData",
+                        "msg": "Error while try to prepare data for tree",
+                        "err": e
+                    });
+                }
+            }
 
-                    /* expand tree */
-                    $(eventsBindSel).on("expandAll", function () {
-                        util.debug.info("expandAll fired");
-                        $(configJSON.regionID).fancytree('getTree').expandAll();
+            function updateTree(data) {
+                var _root = prepareData(data);
+                var tree = getTree();
+                tree.reload(_root);
+
+                if (configJSON.autoExpand2Level > 0) {
+                    $(configJSON.regionID).fancytree("getRootNode").visit(function (node) {
+                        if (node.getLevel() < configJSON.autoExpand2Level) {
+                            node.setExpanded(true);
+                        }
+                    });
+                }
+
+                if (util.isDefinedAndNotNull(searchItemName)) {
+                    var startVal = util.getItemValue(searchItemName);
+                    if (util.isDefinedAndNotNull(startVal) && startVal.length > 0) {
+                        filterTree();
+                    }
+                }
+
+                markNodesWihChildren();
+                openParentOfSelected();
+                util.loader.stop(configJSON.regionID, true);
+            }
+
+            function saveExpandedNodes() {
+                if (util.isDefinedAndNotNull(configJSON.expandedNodesItem)) {
+                    var root = getTree().getRootNode();
+                    var arr = [];
+                    root.visit(function (node) {
+                        if (node.expanded) {
+                            arr.push(node.data.id);
+                        }
                     });
 
-                    /* collapse tree */
-                    $(eventsBindSel).on("collapseAll", function () {
-                        util.debug.info("collapseAll fired");
-                        $(configJSON.regionID).fancytree('getTree').expandAll(false);
+                    util.setItemValue(configJSON.expandedNodesItem, arr.join(":"));
+                }
+            }
+
+            function drawTree(data) {
+                var _root = prepareData(data);
+
+                // draw fancyTree
+                $(configJSON.regionID).fancytree({
+                    extensions: ["glyph", "filter"],
+                    quicksearch: true,
+                    clones: {
+                        highlightClones: true
+                    },
+                    nodata: false,
+                    activeVisible: configJSON.openParentOfActiveNode,
+                    escapeTitles: configJSON.escapeHTML,
+                    focusOnSelect: true,
+                    titlesTabbable: true,
+                    checkbox: configJSON.enableCheckBox,
+                    toggleEffect: configJSON.animationDuration,
+                    selectMode: configJSON.selectMode,
+                    debugLevel: 0, // 0:quiet, 1:normal, 2:debug
+                    keyboard: configJSON.enableKeyBoard, // Support keyboard navigation.
+                    quicksearch: configJSON.enableQuicksearch, // Navigate to next node by typing the first letters.
+                    glyph: {
+                        preset: "awesome4",
+                        map: {
+                            _addClass: "fa",
+                            checkbox: configJSON.checkbox,
+                            checkboxSelected: configJSON.checkboxSelected,
+                            checkboxUnknown: configJSON.checkboxUnknown,
+                            dragHelper: "fa-arrow-right",
+                            dropMarker: "fa-long-arrow-right",
+                            error: "fa-warning",
+                            expanderClosed: "fa-caret-right",
+                            expanderLazy: "fa-angle-right",
+                            expanderOpen: "fa-caret-down",
+                            loading: "fa-spinner fa-pulse",
+                            nodata: "fa-meh-o",
+                            noExpander: "",
+                            radio: "fa-circle-thin",
+                            radioSelected: "fa-circle",
+                            doc: "fa-file-o",
+                            docOpen: "fa-file-o",
+                            folder: "fa-folder-o",
+                            folderOpen: "fa-folder-open-o"
+                        }
+                    },
+                    filter: {
+                        autoApply: true, // Re-apply last filter if lazy data is loaded
+                        autoExpand: configJSON.search.autoExpand, // Expand all branches that contain matches while filtered
+                        counter: configJSON.search.counter, // Show a badge with number of matching child nodes near parent icons
+                        fuzzy: false, // Match single characters in order, e.g. 'fb' will match 'FooBar'
+                        hideExpandedCounter: true, // Hide counter badge if parent is expanded
+                        hideExpanders: false, // Hide expanders if all child nodes are hidden by filter
+                        highlight: configJSON.search.highlight, // Highlight matches by wrapping inside <mark> tags
+                        leavesOnly: configJSON.search.leavesOnly, // Match end nodes only
+                        nodata: false, // Display a 'no data' status node if result is empty
+                        mode: configJSON.search.hideUnmatched ? "hide" : "dimm" // Grayout unmatched nodes (pass "hide" to remove unmatched node instead)
+                    },
+                    source: _root,
+                    init: function (event, data) {
+                        markNodesWihChildren();
+                        openParentOfSelected();
+                        if (configJSON.setItemsOnInit) {
+                            saveExpandedNodes();
+                            setItems();
+                        }
+                    },
+                    collapse: function (event, data) {
+                        saveExpandedNodes();
+                        $(eventsBindSel).trigger("collapsed", data.node);
+                    },
+                    expand: function (event, data) {
+                        markNodesWihChildren();
+                        saveExpandedNodes();
+                        $(eventsBindSel).trigger("expanded", data.node);
+                    },
+                    // if select an item check different types from config json and set value to the items
+                    select: function (event, data) {
+                        util.debug.info({
+                            "selectEvent": event,
+                            "selectData": data
+                        });
+                        markNodesWihChildren(true);
+                        if (data.node.extraClasses != '') {
+                            if ($(data.node.li).find('.fancytree-node').hasClass('fancytree-selected'))
+                                $('.' + data.node.extraClasses).addClass('fancytree-selected');
+                            else
+                                $('.' + data.node.extraClasses).removeClass('fancytree-selected');
+                        }
+                        setItems();
+                    },
+                    beforeActivate: function (event, data) {
+                        if (data.node && data.node.data) {
+                            var nodeData = data.node.data;
+                            if (util.isDefinedAndNotNull(nodeData.link)) {
+                                util.link(nodeData.link);
+                            } else if (data.node.checkbox === 1) {
+                                data.node.toggleSelected();
+                            }
+                        }
+                        if (configJSON.setActiveNode) {
+                            return true;
+                        } else {
+                            return false;
+                        }
+                    },
+                    activate: function (event, data) {
+                        if (data.node && data.node.data) {
+                            var nodeData = data.node.data;
+                            if (util.isDefinedAndNotNull(nodeData.value)) {
+                                util.setItemValue(activeNodeItemName, nodeData.value);
+                            }
+                        }
+                        markNodesWihChildren(true);
+                    }
+                });
+
+                if (util.isDefinedAndNotNull(searchItemName)) {
+                    if (configJSON.search.debounce.enabled) {
+                        $("#" + searchItemName).keyup(util.debounce(function () {
+                            filterTree();
+                        }, configJSON.search.debounce.time));
+                    } else {
+                        $("#" + searchItemName).keyup(function () {
+                            filterTree();
+                        });
+                    }
+
+                    $("#" + searchItemName).on("change", function (e) {
+                        filterTree();
                     });
-                };
+
+                    var startVal = util.getItemValue(searchItemName);
+                    if (util.isDefinedAndNotNull(startVal) && startVal.length > 0) {
+                        filterTree();
+                    }
+                }
+
+                if (configJSON.autoExpand2Level > 0) {
+                    $(configJSON.regionID).fancytree("getRootNode").visit(function (node) {
+                        if (node.getLevel() < configJSON.autoExpand2Level) {
+                            node.setExpanded(true);
+                        }
+                    });
+                }
+
+                util.loader.stop(configJSON.regionID, true);
+
+                /* expand tree */
+                $(eventsBindSel).on("expandAll", function () {
+                    util.debug.info("expandAll fired");
+                    getTree().expandAll();
+                });
+
+                /* collapse tree */
+                $(eventsBindSel).on("collapseAll", function () {
+                    util.debug.info("collapseAll fired");
+                    getTree().expandAll(false);
+                });
+
+                /* selectAll tree */
+                $(eventsBindSel).on("selectAll", function () {
+                    util.debug.info("selectAll fired");
+                    getTree().selectAll(true);
+                });
+
+                /* unselectAll tree */
+                $(eventsBindSel).on("unselectAll", function () {
+                    util.debug.info("unselectAll fired");
+                    getTree().selectAll(false);
+                });
+            };
 
             function filterTree() {
                 var num;
-                var tree = $.ui.fancytree.getTree(configJSON.regionID);
+                var tree = getTree();
                 var sStr = util.getItemValue(searchItemName);
 
                 util.debug.info({
@@ -853,7 +896,10 @@ var fancyTree = (function () {
                     configJSON.typeSettings.forEach(function (obj) {
                         tmpStore.push(util.copyJSONObject(obj));
                     });
-                    $.each($(configJSON.regionID).fancytree('getTree').getSelectedNodes(), function (i, data) {
+
+                    var selNodes = getTree().getSelectedNodes();
+
+                    $.each(selNodes, function (i, data) {
                         tmpStore.forEach(function (obj, idx) {
                             if (obj.id) {
                                 if (data.type) {
@@ -912,7 +958,7 @@ var fancyTree = (function () {
                         $(configJSON.regionID).find(".fancytree-custom-icon").removeClass(configJSON.markerModifier);
                     }
 
-                    var treeObj = $(configJSON.regionID).fancytree('getTree');
+                    var treeObj = getTree();
                     var selectedNodes = treeObj.getSelectedNodes();
                     $.each(selectedNodes, function (idx, el) {
                         $.each(el.getParentList(true), function (idxN, suEl) {
@@ -931,8 +977,8 @@ var fancyTree = (function () {
 
             function openParentOfSelected() {
                 if (configJSON.openParentOfSelected) {
-                    var tree = $(configJSON.regionID).fancytree('getTree').getSelectedNodes();
-                    $.each(tree, function (idx, el) {
+                    var selNodes = getTree().getSelectedNodes();
+                    $.each(selNodes, function (idx, el) {
                         $.each(el.getParentList(true), function (idxN, suEl) {
                             suEl.setExpanded(true);
                         })
