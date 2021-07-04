@@ -1,13 +1,11 @@
-var fancyTree = (function () {
+var fancyTree = function (apex, $) {
+    "use strict";
     var util = {
-        /**********************************************************************************
-         ** required functions 
-         *********************************************************************************/
-        featureInfo: {
+        featureDetails: {
             name: "APEX-Fancy-Tree-Select",
             info: {
-                scriptVersion: "2.1.4.3",
-                utilVersion: "1.3.5",
+                scriptVersion: "2.1.4.4",
+                utilVersion: "1.4",
                 url: "https://github.com/RonnyWeiss",
                 license: "MIT"
             }
@@ -19,58 +17,6 @@ var fancyTree = (function () {
                 return false;
             }
         },
-        isAPEX: function () {
-            if (typeof (apex) !== 'undefined') {
-                return true;
-            } else {
-                return false;
-            }
-        },
-        varType: function (pObj) {
-            if (typeof pObj === "object") {
-                var arrayConstructor = [].constructor;
-                var objectConstructor = ({}).constructor;
-                if (pObj.constructor === arrayConstructor) {
-                    return "array";
-                }
-                if (pObj.constructor === objectConstructor) {
-                    return "json";
-                }
-            } else {
-                return typeof pObj;
-            }
-        },
-        debug: {
-            info: function () {
-                if (util.isAPEX()) {
-                    var i = 0;
-                    var arr = [];
-                    for (var prop in arguments) {
-                        arr[i] = arguments[prop];
-                        i++;
-                    }
-                    arr.push(util.featureInfo);
-                    apex.debug.info.apply(this, arr);
-                }
-            },
-            error: function () {
-                var i = 0;
-                var arr = [];
-                for (var prop in arguments) {
-                    arr[i] = arguments[prop];
-                    i++;
-                }
-                arr.push(util.featureInfo);
-                if (util.isAPEX()) {
-                    apex.debug.error.apply(this, arr);
-                } else {
-                    console.error.apply(this, arr);
-                }
-            }
-        },
-        /**********************************************************************************
-         ** optinal functions 
-         *********************************************************************************/
         convertJSON2LowerCase: function (obj) {
             try {
                 var output = {};
@@ -87,7 +33,8 @@ var fancyTree = (function () {
 
                 return output;
             } catch (e) {
-                util.debug.error({
+                apex.debug.error({
+                    "module": "util.js",
                     "msg": "Error while to lower json",
                     "err": e
                 });
@@ -102,7 +49,8 @@ var fancyTree = (function () {
                 try {
                     tmpJSON = JSON.parse(targetConfig);
                 } catch (e) {
-                    util.debug.error({
+                    apex.debug.error({
+                        "module": "util.js",
                         "msg": "Error while try to parse targetConfig. Please check your Config JSON. Standard Config will be used.",
                         "err": e,
                         "targetConfig": targetConfig
@@ -116,7 +64,8 @@ var fancyTree = (function () {
                 finalConfig = $.extend(true, {}, srcConfig, tmpJSON);
             } catch (e) {
                 finalConfig = $.extend(true, {}, srcConfig);
-                util.debug.error({
+                apex.debug.error({
+                    "module": "util.js",
                     "msg": "Error while try to merge 2 JSONs into standard JSON if any attribute is missing. Please check your Config JSON. Standard Config will be used.",
                     "err": e,
                     "finalConfig": finalConfig
@@ -124,67 +73,67 @@ var fancyTree = (function () {
             }
             return finalConfig;
         },
-        setItemValue: function (itemName, value) {
-            if (util.isAPEX()) {
-                if (apex.item(itemName) && apex.item(itemName).node != false) {
-                    apex.item(itemName).setValue(value);
-                } else {
-                    util.debug.error("Please choose a set item. Because the value (" + value + ") can not be set on item (" + itemName + ")");
-                }
-            } else {
-                util.debug.error("Error while try to call apex.item");
-            }
-        },
-        getItemValue: function (itemName) {
-            if (!itemName) {
-                return "";
-            }
-
-            if (util.isAPEX()) {
-                if (apex.item(itemName) && apex.item(itemName).node != false) {
-                    return apex.item(itemName).getValue();
-                } else {
-                    util.debug.error("Please choose a get item. Because the value could not be get from item(" + itemName + ")");
-                }
-            } else {
-                util.debug.error("Error while try to call apex.item");
-            }
-        },
         printDOMMessage: {
             show: function (id, text, icon, color) {
-                var div = $("<div></div>")
-                    .css("margin", "12px")
-                    .css("text-align", "center")
-                    .css("padding", "35px 0")
-                    .addClass("dominfomessagediv");
+                if ($(id).height() >= 150) {
+                    var div = $("<div></div>")
+                        .css("margin", "12px")
+                        .css("text-align", "center")
+                        .css("padding", "10px 0")
+                        .addClass("dominfomessagediv");
 
-                var subDiv = $("<div></div>");
+                    var subDiv = $("<div></div>");
 
-                var subDivSpan = $("<span></span>")
-                    .addClass("fa")
-                    .addClass(icon || "fa-info-circle-o")
-                    .addClass("fa-2x")
-                    .css("height", "32px")
-                    .css("width", "32px")
-                    .css("color", "#D0D0D0")
-                    .css("margin-bottom", "16px")
-                    .css("color", color || "inhherit");
+                    var iconSpan = $("<span></span>")
+                        .addClass("fa")
+                        .addClass(icon || "fa-info-circle-o")
+                        .addClass("fa-2x")
+                        .css("height", "32px")
+                        .css("width", "32px")
+                        .css("margin-bottom", "16px")
+                        .css("color", color || "#D0D0D0");
 
-                subDiv.append(subDivSpan);
+                    subDiv.append(iconSpan);
 
-                var span = $("<span></span>")
-                    .text(text)
-                    .css("display", "block")
-                    .css("color", "#707070")
-                    .css("text-overflow", "ellipsis")
-                    .css("overflow", "hidden")
-                    .css("white-space", "nowrap")
-                    .css("font-size", "12px");
+                    var textSpan = $("<span></span>")
+                        .text(text)
+                        .css("display", "block")
+                        .css("color", "#707070")
+                        .css("text-overflow", "ellipsis")
+                        .css("overflow", "hidden")
+                        .css("white-space", "nowrap")
+                        .css("font-size", "12px");
 
-                div
-                    .append(subDiv)
-                    .append(span);
+                    div
+                        .append(subDiv)
+                        .append(textSpan);
+                } else {
+                    var div = $("<div></div>")
+                        .css("margin", "10px")
+                        .css("text-align", "center")
+                        .addClass("dominfomessagediv");
 
+                    var iconSpan = $("<span></span>")
+                        .addClass("fa")
+                        .addClass(icon || "fa-info-circle-o")
+                        .css("font-size", "22px")
+                        .css("line-height", "26px")
+                        .css("margin-right", "5px")
+                        .css("color", color || "#D0D0D0");
+
+                    var textSpan = $("<span></span>")
+                        .text(text)
+                        .css("color", "#707070")
+                        .css("text-overflow", "ellipsis")
+                        .css("overflow", "hidden")
+                        .css("white-space", "nowrap")
+                        .css("font-size", "12px")
+                        .css("line-height", "20px");
+
+                    div
+                        .append(iconSpan)
+                        .append(textSpan);
+                }
                 $(id).append(div);
             },
             hide: function (id) {
@@ -219,29 +168,7 @@ var fancyTree = (function () {
                 if (setMinHeight) {
                     $(id).css("min-height", "100px");
                 }
-                if (util.isAPEX()) {
-                    apex.util.showSpinner($(id));
-                } else {
-                    /* define loader */
-                    var faLoader = $("<span></span>");
-                    faLoader.attr("id", "loader" + id);
-                    faLoader.addClass("ct-loader");
-                    faLoader.css("text-align", "center");
-                    faLoader.css("width", "100%");
-                    faLoader.css("display", "block");
-
-                    /* define refresh icon with animation */
-                    var faRefresh = $("<i></i>");
-                    faRefresh.addClass("fa fa-refresh fa-2x fa-anim-spin");
-                    faRefresh.css("background", "rgba(121,121,121,0.6)");
-                    faRefresh.css("border-radius", "100%");
-                    faRefresh.css("padding", "15px");
-                    faRefresh.css("color", "white");
-
-                    /* append loader */
-                    faLoader.append(faRefresh);
-                    $(id).append(faLoader);
-                }
+                apex.util.showSpinner($(id));
             },
             stop: function (id, removeMinHeight) {
                 if (removeMinHeight) {
@@ -261,7 +188,8 @@ var fancyTree = (function () {
                 }
                 return objectCopy;
             } catch (e) {
-                util.debug.error({
+                apex.debug.error({
+                    "module": "util.js",
                     "msg": "Error while try to copy object",
                     "err": e
                 });
@@ -287,7 +215,10 @@ var fancyTree = (function () {
                 if (typeof (Storage) !== "undefined") {
                     return true;
                 } else {
-                    util.debug.info("Your browser does not support local storage");
+                    apex.debug.info({
+                        "module": "util.js",
+                        msg: "Your browser does not support local storage"
+                    });
                     return false;
                 }
             },
@@ -301,7 +232,8 @@ var fancyTree = (function () {
                         }
                     }
                 } catch (e) {
-                    util.debug.error({
+                    apex.debug.error({
+                        "module": "util.js",
                         "msg": "Error while try to save item to local Storage. Confirm that you not exceed the storage limit of 5MB.",
                         "err": e
                     });
@@ -317,7 +249,8 @@ var fancyTree = (function () {
                         }
                     }
                 } catch (e) {
-                    util.debug.error({
+                    apex.debug.error({
+                        "module": "util.js",
                         "msg": "Error while try to read item from local Storage",
                         "err": e
                     });
@@ -333,7 +266,8 @@ var fancyTree = (function () {
                         }
                     }
                 } catch (e) {
-                    util.debug.error({
+                    apex.debug.error({
+                        "module": "util.js",
                         "msg": "Error while try remove item from local Storage",
                         "err": e
                     });
@@ -344,8 +278,8 @@ var fancyTree = (function () {
 
     return {
         initTree: function (regionID, ajaxID, noDataMessage, errMessage, udConfigJSON, items2Submit, escapeHTML, searchItemName, activeNodeItemName, pLocalStorage, pLocalStorageVersion, pExpandedNodesItem) {
-            util.debug.info({
-                "module": "initTree",
+            apex.debug.info({
+                "fct": util.featureDetails.name + " - " + "initTree",
                 "arguments": {
                     "regionID": regionID,
                     "ajaxID": ajaxID,
@@ -359,7 +293,8 @@ var fancyTree = (function () {
                     "pLocalStorage": pLocalStorage,
                     "pLocalStorageVersion": pLocalStorageVersion,
                     "pExpandedNodesItem": pExpandedNodesItem
-                }
+                },
+                "featureDetails": util.featureDetails
             });
 
             var configJSON = {};
@@ -406,14 +341,14 @@ var fancyTree = (function () {
             configJSON.localStorage.enabled = (pLocalStorage === 'Y') ? true : false;
 
             if (configJSON.localStorage.enabled) {
-                configJSON.session = util.getItemValue('pInstance');
+                configJSON.session = apex.item("pInstance").getValue();
                 configJSON.version = pLocalStorageVersion;
                 configJSON.localStorage.key = regionID;
                 configJSON.localStorage.type = "session";
 
                 configJSON.localStorage.keyFinal = JSON.stringify({
                     "key": configJSON.localStorage.key,
-                    "plugin": util.featureInfo.name,
+                    "plugin": util.featureDetails.name,
                     "session": configJSON.session,
                     "version": configJSON.version
                 }, null, 0);
@@ -424,14 +359,15 @@ var fancyTree = (function () {
                         if (i.substring(0, 1) === "{") {
                             try {
                                 var dat = JSON.parse(i);
-                                if (dat.plugin == util.featureInfo.name && dat.key == configJSON.localStorage.key && (dat.session != configJSON.session || dat.version != configJSON.version)) {
+                                if (dat.plugin == util.featureDetails.name && dat.key == configJSON.localStorage.key && (dat.session != configJSON.session || dat.version != configJSON.version)) {
                                     util.localStorage.remove(i);
                                 }
                             } catch (e) {
-                                util.debug.error({
-                                    "module": "initTree",
+                                apex.debug.error({
+                                    "fct": util.featureDetails.name + " - " + "initTree",
                                     "msg": "Error while try to parse local storage key json",
-                                    "err": e
+                                    "err": e,
+                                    "featureDetails": util.featureDetails
                                 });
                             }
                         }
@@ -518,12 +454,13 @@ var fancyTree = (function () {
                         if (storedStr) {
                             var decompressedStr = LZString.decompress(storedStr);
                             var data = JSON.parse(decompressedStr);
-                            util.debug.info({
-                                "module": "getData",
+                            apex.debug.info({
+                                "fct": util.featureDetails.name + " - " + "getData",
                                 "msg": "Read string from local storage",
                                 "localStorageKey": configJSON.localStorage.keyFinal,
                                 "localStorageStr": decompressedStr,
-                                "localStorageCompressedStr": storedStr
+                                "localStorageCompressedStr": storedStr,
+                                "featureDetails": util.featureDetails
                             });
                             sucFunction(data);
                             if (isUpdate) {
@@ -544,18 +481,20 @@ var fancyTree = (function () {
                                     var str = JSON.stringify(pData, null, 0);
                                     var cStr = LZString.compress(str);
                                     util.localStorage.set(configJSON.localStorage.keyFinal, cStr, configJSON.localStorage.type);
-                                    util.debug.info({
-                                        "module": "getData",
+                                    apex.debug.info({
+                                        "fct": util.featureDetails.name + " - " + "getData",
                                         "msg": "Write string to local storage",
                                         "localStorageKey": configJSON.localStorage.keyFinal,
                                         "localStorageStr": str,
-                                        "localStorageCompressedStr": cStr
+                                        "localStorageCompressedStr": cStr,
+                                        "featureDetails": util.featureDetails
                                     });
                                 } catch (e) {
-                                    util.debug.info({
-                                        "module": "getData",
+                                    apex.debug.error({
+                                        "fct": util.featureDetails.name + " - " + "getData",
                                         "msg": "Error while try to store local cache. This could be because local cache is disabled in your browser or maximum sotrage of 5MB is exceeded.",
-                                        "err": e
+                                        "err": e,
+                                        "featureDetails": util.featureDetails
                                     });
                                 }
                             }
@@ -567,10 +506,11 @@ var fancyTree = (function () {
                             util.loader.stop(configJSON.regionID, true);
                             $(configJSON.regionID).empty();
                             util.errorMessage.show(configJSON.regionID, configJSON.errMessage);
-                            util.debug.error({
-                                "module": "getData",
+                            apex.debug.error({
+                                "fct": util.featureDetails.name + " - " + "getData",
                                 "msg": "Error while try to get new data",
-                                "err": d
+                                "err": d,
+                                "featureDetails": util.featureDetails
                             });
                             if (isUpdate) {
                                 $(eventsBindSel).trigger("apexafterrefresh");
@@ -579,10 +519,11 @@ var fancyTree = (function () {
                         dataType: "json"
                     });
                 } catch (e) {
-                    util.debug.error({
-                        "module": "getData",
+                    apex.debug.error({
+                        "fct": util.featureDetails.name + " - " + "getData",
                         "msg": "Error while try to get new data",
-                        "err": e
+                        "err": e,
+                        "featureDetails": util.featureDetails
                     });
                     if (isUpdate) {
                         $(eventsBindSel).trigger("apexafterrefresh");
@@ -601,7 +542,7 @@ var fancyTree = (function () {
                     var activeID;
                     var isActivated = false;
                     if (util.isDefinedAndNotNull(activeNodeItemName)) {
-                        activeID = util.getItemValue(activeNodeItemName);
+                        activeID = apex.item(activeNodeItemName).getValue();
                     } else {
                         configJSON.setActiveNode = false;
                     }
@@ -638,21 +579,25 @@ var fancyTree = (function () {
                     _root = buildTree({
                         q: _root
                     });
+
                     if (data.row && data.row.length > 0) {
                         util.noDataMessage.hide(configJSON.regionID);
                     } else {
                         util.noDataMessage.hide(configJSON.regionID);
                         util.noDataMessage.show(configJSON.regionID, configJSON.noDataMessage);
                     }
+
                     return _root;
+
                 } catch (e) {
                     util.loader.stop(configJSON.regionID, true);
                     $(configJSON.regionID).empty();
                     util.errorMessage.show(configJSON.regionID, configJSON.errMessage);
-                    util.debug.error({
-                        "module": "prepareData",
+                    apex.debug.error({
+                        "fct": util.featureDetails.name + " - " + "prepareData",
                         "msg": "Error while try to prepare data for tree",
-                        "err": e
+                        "err": e,
+                        "featureDetails": util.featureDetails
                     });
                 }
             }
@@ -671,7 +616,7 @@ var fancyTree = (function () {
                 }
 
                 if (util.isDefinedAndNotNull(searchItemName)) {
-                    var startVal = util.getItemValue(searchItemName);
+                    var startVal = apex.item(searchItemName).getValue();
                     if (util.isDefinedAndNotNull(startVal) && startVal.length > 0) {
                         filterTree();
                     }
@@ -692,7 +637,7 @@ var fancyTree = (function () {
                         }
                     });
 
-                    util.setItemValue(configJSON.expandedNodesItem, arr.join(":"));
+                    apex.item(configJSON.expandedNodesItem).setValue(arr.join(":"));
                 }
             }
 
@@ -773,9 +718,11 @@ var fancyTree = (function () {
                     },
                     // if select an item check different types from config json and set value to the items
                     select: function (event, data) {
-                        util.debug.info({
+                        apex.debug.info({
+                            "fct": util.featureDetails.name + " - " + "drawTree",
                             "selectEvent": event,
-                            "selectData": data
+                            "selectData": data,
+                            "featureDetails": util.featureDetails
                         });
                         markNodesWihChildren(true);
                         if (data.node.extraClasses != '') {
@@ -809,7 +756,7 @@ var fancyTree = (function () {
                         if (data.node && data.node.data) {
                             var nodeData = data.node.data;
                             if (util.isDefinedAndNotNull(nodeData.value)) {
-                                util.setItemValue(activeNodeItemName, nodeData.value);
+                                apex.item(activeNodeItemName).setValue(nodeData.value);
                             }
                         }
                         markNodesWihChildren(true);
@@ -831,7 +778,7 @@ var fancyTree = (function () {
                         filterTree();
                     });
 
-                    var startVal = util.getItemValue(searchItemName);
+                    var startVal = apex.item(searchItemName).getValue();
                     if (util.isDefinedAndNotNull(startVal) && startVal.length > 0) {
                         filterTree();
                     }
@@ -849,25 +796,41 @@ var fancyTree = (function () {
 
                 /* expand tree */
                 $(eventsBindSel).on("expandAll", function () {
-                    util.debug.info("expandAll fired");
+                    apex.debug.info({
+                        "fct": util.featureDetails.name + " - " + "drawTree",
+                        "msg": "expandAll fired",
+                        "featureDetails": util.featureDetails
+                    });
                     getTree().expandAll();
                 });
 
                 /* collapse tree */
                 $(eventsBindSel).on("collapseAll", function () {
-                    util.debug.info("collapseAll fired");
+                    apex.debug.info({
+                        "fct": util.featureDetails.name + " - " + "drawTree",
+                        "msg": "collapseAll fired",
+                        "featureDetails": util.featureDetails
+                    });
                     getTree().expandAll(false);
                 });
 
                 /* selectAll tree */
                 $(eventsBindSel).on("selectAll", function () {
-                    util.debug.info("selectAll fired");
+                    apex.debug.info({
+                        "fct": util.featureDetails.name + " - " + "drawTree",
+                        "msg": "selectAll fired",
+                        "featureDetails": util.featureDetails
+                    });
                     getTree().selectAll(true);
                 });
 
                 /* unselectAll tree */
                 $(eventsBindSel).on("unselectAll", function () {
-                    util.debug.info("unselectAll fired");
+                    apex.debug.info({
+                        "fct": util.featureDetails.name + " - " + "drawTree",
+                        "msg": "unselectAll fired",
+                        "featureDetails": util.featureDetails
+                    });
                     getTree().selectAll(false);
                 });
             };
@@ -875,12 +838,7 @@ var fancyTree = (function () {
             function filterTree() {
                 var num;
                 var tree = getTree();
-                var sStr = util.getItemValue(searchItemName);
-
-                util.debug.info({
-                    "tree": tree,
-                    "sStr": sStr
-                });
+                var sStr = apex.item(searchItemName).getValue();
 
                 num = tree.filterBranches.call(tree, sStr);
 
@@ -888,10 +846,6 @@ var fancyTree = (function () {
                 if (num === 0) {
                     util.noDataMessage.show(configJSON.regionID, configJSON.noDataMessage);
                 }
-
-                util.debug.info({
-                    "num": num
-                });
             }
 
             function setItems() {
@@ -918,15 +872,17 @@ var fancyTree = (function () {
                                         }
                                     }
                                 } else {
-                                    util.debug.error({
-                                        "module": "setItems",
-                                        "msg": "type in not set in data"
+                                    apex.debug.error({
+                                        "fct": util.featureDetails.name + " - " + "setItems",
+                                        "msg": "type in not set in data",
+                                        "featureDetails": util.featureDetails
                                     });
                                 }
                             } else {
-                                util.debug.error({
-                                    "module": "setItems",
-                                    "msg": "id is not defined in config json in types. Please check help for config json."
+                                apex.debug.error({
+                                    "fct": util.featureDetails.name + " - " + "setItems",
+                                    "msg": "id is not defined in config json in types. Please check help for config json.",
+                                    "featureDetails": util.featureDetails
                                 });
                             }
                         });
@@ -936,22 +892,24 @@ var fancyTree = (function () {
                         if (obj.storeItem) {
                             if (obj.data && obj.data.length > 0) {
                                 obj.data.sort(sortNumber);
-                                util.setItemValue(obj.storeItem, obj.data.join(":"));
+                                apex.item(obj.storeItem).setValue( obj.data.join(":"));
                             } else {
-                                util.setItemValue(obj.storeItem, null);
+                                apex.item(obj.storeItem).setValue(null);
                             }
 
                         } else {
-                            util.debug.error({
-                                "module": "setItems",
-                                "msg": "storeItem is not defined in config json in types. Please check help for config json."
+                            apex.debug.error({
+                                "fct": util.featureDetails.name + " - " + "setItems",
+                                "msg": "storeItem is not defined in config json in types. Please check help for config json.",
+                                "featureDetails": util.featureDetails
                             });
                         }
                     });
                 } else {
-                    util.debug.error({
-                        "module": "setItems",
-                        "msg": "Types is not defined in config json but you have set setItemsOnInit: true or try to select a node. Please check help for config json."
+                    apex.debug.error({
+                        "fct": util.featureDetails.name + " - " + "setItems",
+                        "msg": "Types is not defined in config json but you have set setItemsOnInit: true or try to select a node. Please check help for config json.",
+                        "featureDetails": util.featureDetails
                     });
                 }
             }
@@ -1018,4 +976,4 @@ var fancyTree = (function () {
 
         }
     };
-})();
+};
