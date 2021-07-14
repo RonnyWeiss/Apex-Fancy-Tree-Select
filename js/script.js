@@ -4,7 +4,7 @@ var fancyTree = function (apex, $) {
         featureDetails: {
             name: "APEX-Fancy-Tree-Select",
             info: {
-                scriptVersion: "2.1.4.4",
+                scriptVersion: "2.1.4.5",
                 utilVersion: "1.4",
                 url: "https://github.com/RonnyWeiss",
                 license: "MIT"
@@ -832,6 +832,16 @@ var fancyTree = function (apex, $) {
                         "featureDetails": util.featureDetails
                     });
                     getTree().selectAll(false);
+                });
+
+                /* expandSelected tree */
+                $(eventsBindSel).on("expandSelected", function () {
+                    apex.debug.info({
+                        "fct": util.featureDetails.name + " - " + "drawTree",
+                        "msg": "expandSelected fired",
+                        "featureDetails": util.featureDetails
+                    });
+                    openParentOfSelected();
                 });
             };
 
