@@ -4,7 +4,7 @@ var fancyTree = function (apex, $) {
         featureDetails: {
             name: "APEX-Fancy-Tree-Select",
             info: {
-                scriptVersion: "2.1.4.5",
+                scriptVersion: "2.1.4.6",
                 utilVersion: "1.4",
                 url: "https://github.com/RonnyWeiss",
                 license: "MIT"
@@ -607,13 +607,7 @@ var fancyTree = function (apex, $) {
                 var tree = getTree();
                 tree.reload(_root);
 
-                if (configJSON.autoExpand2Level > 0) {
-                    $(configJSON.regionID).fancytree("getRootNode").visit(function (node) {
-                        if (node.getLevel() < configJSON.autoExpand2Level) {
-                            node.setExpanded(true);
-                        }
-                    });
-                }
+                expandTree2Level(configJSON.autoExpand2Level);
 
                 if (util.isDefinedAndNotNull(searchItemName)) {
                     var startVal = apex.item(searchItemName).getValue();
@@ -638,6 +632,18 @@ var fancyTree = function (apex, $) {
                     });
 
                     apex.item(configJSON.expandedNodesItem).setValue(arr.join(":"));
+                }
+            }
+
+            function expandTree2Level(pLevel) {
+                if (pLevel > 0) {
+                    $(configJSON.regionID).fancytree("getRootNode").visit(function (node) {
+                        if (node.getLevel() < pLevel) {
+                            node.setExpanded(true);
+                        } else {
+                            node.setExpanded(false);
+                        }
+                    });
                 }
             }
 
@@ -784,13 +790,7 @@ var fancyTree = function (apex, $) {
                     }
                 }
 
-                if (configJSON.autoExpand2Level > 0) {
-                    $(configJSON.regionID).fancytree("getRootNode").visit(function (node) {
-                        if (node.getLevel() < configJSON.autoExpand2Level) {
-                            node.setExpanded(true);
-                        }
-                    });
-                }
+                expandTree2Level(configJSON.autoExpand2Level);
 
                 util.loader.stop(configJSON.regionID, true);
 
@@ -841,7 +841,23 @@ var fancyTree = function (apex, $) {
                         "msg": "expandSelected fired",
                         "featureDetails": util.featureDetails
                     });
-                    openParentOfSelected();
+                    openParentOfSelected(true);
+                });
+
+                /* expand tree to specific level */
+                $(eventsBindSel).on("expandToLevel", function (i, d) {
+                    apex.debug.info({
+                        "fct": util.featureDetails.name + " - " + "drawTree",
+                        "msg": "expandToLevel fired",
+                        "i": i,
+                        "d": d,
+                        "featureDetails": util.featureDetails
+                    });
+                    if (util.isDefinedAndNotNull(d)) {
+                        expandTree2Level(d);
+                    } else {
+                        expandTree2Level(configJSON.autoExpand2Level);
+                    }
                 });
             };
 
@@ -902,7 +918,7 @@ var fancyTree = function (apex, $) {
                         if (obj.storeItem) {
                             if (obj.data && obj.data.length > 0) {
                                 obj.data.sort(sortNumber);
-                                apex.item(obj.storeItem).setValue( obj.data.join(":"));
+                                apex.item(obj.storeItem).setValue(obj.data.join(":"));
                             } else {
                                 apex.item(obj.storeItem).setValue(null);
                             }
@@ -947,8 +963,8 @@ var fancyTree = function (apex, $) {
                 }
             }
 
-            function openParentOfSelected() {
-                if (configJSON.openParentOfSelected) {
+            function openParentOfSelected(pForce) {
+                if (configJSON.openParentOfSelected || pForce) {
                     var selNodes = getTree().getSelectedNodes();
                     $.each(selNodes, function (idx, el) {
                         $.each(el.getParentList(true), function (idxN, suEl) {
