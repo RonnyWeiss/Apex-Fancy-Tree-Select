@@ -4,8 +4,8 @@ var fancyTree = function (apex, $) {
         featureDetails: {
             name: "APEX-Fancy-Tree-Select",
             info: {
-                scriptVersion: "2.1.4.6",
-                utilVersion: "1.4",
+                scriptVersion: "2.1.4.7",
+                utilVersion: "1.6",
                 url: "https://github.com/RonnyWeiss",
                 license: "MIT"
             }
@@ -308,6 +308,7 @@ var fancyTree = function (apex, $) {
                 "enableKeyBoard": true,
                 "enableQuicksearch": true,
                 "forceSelectionSet": true,
+                "forceRefreshEventOnStart": false,
                 "markNodesWithChildren": false,
                 "markerModifier": "fam-plus fam-is-info",
                 "openParentOfActiveNode": true,
@@ -447,6 +448,9 @@ var fancyTree = function (apex, $) {
             }
 
             function getData(sucFunction, isUpdate) {
+                if (isUpdate) {
+                    $(eventsBindSel).trigger("apexbeforerefresh");
+                }
                 util.loader.start(configJSON.regionID, true);
                 try {
                     if (configJSON.localStorage.enabled) {
@@ -976,7 +980,7 @@ var fancyTree = function (apex, $) {
 
             var eventsBindSel = "#" + regionID.substring(4);
 
-            getData(drawTree);
+            getData(drawTree, configJSON.forceRefreshEventOnStart);
 
             // bind dynamic action refresh
             $(eventsBindSel).bind("apexrefresh", function () {
@@ -999,7 +1003,6 @@ var fancyTree = function (apex, $) {
                     }
                 }, configJSON.refresh * 1000);
             }
-
         }
     };
 };

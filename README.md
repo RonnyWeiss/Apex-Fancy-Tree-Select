@@ -15,6 +15,8 @@ The Plug-ins also supports different events:
 *   **Unselect all:** $("#static-tree-region-id-of-the-tree-region").trigger("unselectAll");
 *   **expand Tree to a specific Level (When you left data then configJSON is used):** $("#static-tree-region-id-of-the-tree-region").trigger("expandToLevel", 3);
 
+The tree also supports apexbeforerefresh and apexafterefresh event that are available in dynamic actions.
+
 For working Demo just click on:
 
 https://apex.oracle.com/pls/apex/f?p=103428
@@ -22,3 +24,5 @@ https://apex.oracle.com/pls/apex/f?p=103428
 If you like my stuff, would be nice if you donate me a coffee
 
 [![Donate](https://img.shields.io/badge/Donate-PayPal-green.svg)](https://www.paypal.me/RonnyW1)
+
+**Important clarification: My work in the development team of Oracle APEX is in no way related to my open source projects or the plug-ins on apex.world! All plug-ins are built in my spare time and are not supported by Oracle!**
