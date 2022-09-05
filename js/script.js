@@ -6,8 +6,8 @@ let fancyTree = function ( apex, $ ) {
         featureDetails: {
             name: "APEX-Fancy-Tree-Select",
             info: {
-                scriptVersion: "220905",
-                utilVersion: "220905",
+                scriptVersion: "22.09.05",
+                utilVersion: "22.09.05",
                 url: "https://github.com/RonnyWeiss",
                 license: "MIT"
             }
