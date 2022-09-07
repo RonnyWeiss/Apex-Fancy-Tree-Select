@@ -1,6 +1,6 @@
 {
     "name": "APEX FancyTree Select",
-    "version": "22.09.05",
+    "version": "22.09.07",
     "description": "This Plug-in is used to draw a FancyTree with select option. Selected nodes can be set into different APEX items. It has also the option to use it as read only tree and you can cache large trees in local storage on the client to save loading the data each time you refresh a page with the same tree. It's also possible to filter the tree with a search field.<p><b>Important clarification: My work in the development team of Oracle APEX is in no way related to my open source projects or the plug-ins here on apex.world! All plug-ins are built in my spare time and are not supported by Oracle!</b></p>",
     "keywords": ["oracle", "apex", "plugin", "region", "tree", "localStorage"],
     "homepage": "https://github.com/RonnyWeiss/Apex-Fancy-Tree-Select",
