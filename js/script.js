@@ -6,7 +6,7 @@ let fancyTree = function ( apex, $ ) {
         featureDetails: {
             name: "APEX-Fancy-Tree-Select",
             info: {
-                scriptVersion: "22.09.07",
+                scriptVersion: "22.10.14",
                 utilVersion: "22.09.05",
                 url: "https://github.com/RonnyWeiss",
                 license: "MIT"
@@ -589,7 +589,7 @@ let fancyTree = function ( apex, $ ) {
                             } );
                         }
 
-                        if ( !isActivated && activeID && ( val.id === activeID ) ) {
+                        if ( !isActivated && activeID && ( "" + val.id === "" + activeID ) ) {
                             val.active = 1;
                             /* only one node can be active */
                             isActivated = true;
