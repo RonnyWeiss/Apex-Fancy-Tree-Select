@@ -6,14 +6,14 @@ let fancyTree = function ( apex, $ ) {
         featureDetails: {
             name: "APEX-Fancy-Tree-Select",
             info: {
-                scriptVersion: "22.10.14",
-                utilVersion: "22.09.05",
+                scriptVersion: "23.07.10",
+                utilVersion: "22.11.28",
                 url: "https://github.com/RonnyWeiss",
                 license: "MIT"
             }
         },
         isDefinedAndNotNull: function ( pInput ) {
-            if ( typeof pInput !== "undefined" && pInput !== null && "" + pInput !== "" ) {
+            if ( typeof pInput !== "undefined" && pInput !== null && pInput !== "" ) {
                 return true;
             } else {
                 return false;
@@ -23,9 +23,9 @@ let fancyTree = function ( apex, $ ) {
             try {
                 let output = {};
                 for ( let i in obj ) {
-                    if ( Object.prototype.toString.apply( obj[i] ) === "[object Object]" ) {
+                    if ( Object.prototype.toString.apply( obj[i] ) === '[object Object]' ) {
                         output[i.toLowerCase()] = util.convertJSON2LowerCase( obj[i] );
-                    } else if ( Object.prototype.toString.apply( obj[i] ) === "[object Array]" ) {
+                    } else if ( Object.prototype.toString.apply( obj[i] ) === '[object Array]' ) {
                         output[i.toLowerCase()] = [];
                         output[i.toLowerCase()].push( util.convertJSON2LowerCase( obj[i][0] ) );
                     } else {
@@ -47,7 +47,7 @@ let fancyTree = function ( apex, $ ) {
             let finalConfig = {};
             let tmpJSON = {};
             /* try to parse config json when string or just set */
-            if ( typeof targetConfig === "string" ) {
+            if ( typeof targetConfig === 'string' ) {
                 try {
                     tmpJSON = JSON.parse( targetConfig );
                 } catch ( e ) {
@@ -136,7 +136,7 @@ let fancyTree = function ( apex, $ ) {
                 $( id ).append( div );
             },
             hide: function ( id ) {
-                $( id ).children( ".dominfomessagediv" ).remove();
+                $( id ).children( '.dominfomessagediv' ).remove();
             }
         },
         noDataMessage: {
@@ -156,7 +156,7 @@ let fancyTree = function ( apex, $ ) {
             }
         },
         link: function ( pLink, pTarget = "_parent" ) {
-            if ( typeof pLink !== "undefined" && pLink !== null && "" + pLink !== "" ) {
+            if ( typeof pLink !== "undefined" && pLink !== null && pLink !== "" ) {
                 window.open( pLink, pTarget );
             }
         },
@@ -194,19 +194,14 @@ let fancyTree = function ( apex, $ ) {
                 } );
             }
         },
-        debounce: function ( pFunction, pWaitTime, pImmediate ) {
-            let timeout;
-            return function () {
-                const context = this;
-                const args = arguments;
-                const later = function () {
-                    timeout = null;
-                    if ( !pImmediate ) {pFunction.apply( context, args );}
-                };
-                const callNow = pImmediate && !timeout;
-                clearTimeout( timeout );
-                timeout = setTimeout( later, pWaitTime || 300 );
-                if ( callNow ) {pFunction.apply( context, args );}
+        debounce: function ( pFunction, pTimeout = 50 ){
+            let timer;
+            return ( ...args ) => {
+                clearTimeout( timer );
+                timer = setTimeout( 
+                    function() { 
+                        pFunction.apply( this, args );
+                    }, pTimeout );
             };
         },
         localStorage: {
@@ -587,6 +582,10 @@ let fancyTree = function ( apex, $ ) {
                                     }
                                 }
                             } );
+                        }
+
+                        if ( val.unselectable === 1 ) {
+                            val.unselectableStatus = val.selected === 1;
                         }
 
                         if ( !isActivated && activeID && ( "" + val.id === "" + activeID ) ) {
