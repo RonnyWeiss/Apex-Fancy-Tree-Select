@@ -1,1471 +1,14 @@
-/*! jQuery Fancytree Plugin - 2.38.2 - 2022-06-30T18:24:06Z
-  * https://github.com/mar10/fancytree
-  * Copyright (c) 2022 Martin Wendt; Licensed MIT
- */
-/*! jQuery UI - v1.13.0 - 2021-11-09
-* http://jqueryui.com
-* Includes: widget.js, position.js, jquery-patch.js, keycode.js, scroll-parent.js, unique-id.js
-* Copyright jQuery Foundation and other contributors; Licensed MIT */
-
-/*
-	NOTE: Original jQuery UI wrapper was replaced with a simple IIFE.
-	See README-Fancytree.md
-*/
-(function( $ ) {
-
-	$.ui = $.ui || {};
-
-	var version = $.ui.version = "1.13.0";
-
-
-	/*!
-	 * jQuery UI Widget 1.13.0
-	 * http://jqueryui.com
-	 *
-	 * Copyright jQuery Foundation and other contributors
-	 * Released under the MIT license.
-	 * http://jquery.org/license
-	 */
-
-	//>>label: Widget
-	//>>group: Core
-	//>>description: Provides a factory for creating stateful widgets with a common API.
-	//>>docs: http://api.jqueryui.com/jQuery.widget/
-	//>>demos: http://jqueryui.com/widget/
-
-
-	var widgetUuid = 0;
-	var widgetHasOwnProperty = Array.prototype.hasOwnProperty;
-	var widgetSlice = Array.prototype.slice;
-
-	$.cleanData = ( function( orig ) {
-		return function( elems ) {
-			var events, elem, i;
-			for ( i = 0; ( elem = elems[ i ] ) != null; i++ ) {
-
-				// Only trigger remove when necessary to save time
-				events = $._data( elem, "events" );
-				if ( events && events.remove ) {
-					$( elem ).triggerHandler( "remove" );
-				}
-			}
-			orig( elems );
-		};
-	} )( $.cleanData );
-
-	$.widget = function( name, base, prototype ) {
-		var existingConstructor, constructor, basePrototype;
-
-		// ProxiedPrototype allows the provided prototype to remain unmodified
-		// so that it can be used as a mixin for multiple widgets (#8876)
-		var proxiedPrototype = {};
-
-		var namespace = name.split( "." )[ 0 ];
-		name = name.split( "." )[ 1 ];
-		var fullName = namespace + "-" + name;
-
-		if ( !prototype ) {
-			prototype = base;
-			base = $.Widget;
-		}
-
-		if ( Array.isArray( prototype ) ) {
-			prototype = $.extend.apply( null, [ {} ].concat( prototype ) );
-		}
-
-		// Create selector for plugin
-		$.expr.pseudos[ fullName.toLowerCase() ] = function( elem ) {
-			return !!$.data( elem, fullName );
-		};
-
-		$[ namespace ] = $[ namespace ] || {};
-		existingConstructor = $[ namespace ][ name ];
-		constructor = $[ namespace ][ name ] = function( options, element ) {
-
-			// Allow instantiation without "new" keyword
-			if ( !this._createWidget ) {
-				return new constructor( options, element );
-			}
-
-			// Allow instantiation without initializing for simple inheritance
-			// must use "new" keyword (the code above always passes args)
-			if ( arguments.length ) {
-				this._createWidget( options, element );
-			}
-		};
-
-		// Extend with the existing constructor to carry over any static properties
-		$.extend( constructor, existingConstructor, {
-			version: prototype.version,
-
-			// Copy the object used to create the prototype in case we need to
-			// redefine the widget later
-			_proto: $.extend( {}, prototype ),
-
-			// Track widgets that inherit from this widget in case this widget is
-			// redefined after a widget inherits from it
-			_childConstructors: []
-		} );
-
-		basePrototype = new base();
-
-		// We need to make the options hash a property directly on the new instance
-		// otherwise we'll modify the options hash on the prototype that we're
-		// inheriting from
-		basePrototype.options = $.widget.extend( {}, basePrototype.options );
-		$.each( prototype, function( prop, value ) {
-			if ( typeof value !== "function" ) {
-				proxiedPrototype[ prop ] = value;
-				return;
-			}
-			proxiedPrototype[ prop ] = ( function() {
-				function _super() {
-					return base.prototype[ prop ].apply( this, arguments );
-				}
-
-				function _superApply( args ) {
-					return base.prototype[ prop ].apply( this, args );
-				}
-
-				return function() {
-					var __super = this._super;
-					var __superApply = this._superApply;
-					var returnValue;
-
-					this._super = _super;
-					this._superApply = _superApply;
-
-					returnValue = value.apply( this, arguments );
-
-					this._super = __super;
-					this._superApply = __superApply;
-
-					return returnValue;
-				};
-			} )();
-		} );
-		constructor.prototype = $.widget.extend( basePrototype, {
-
-			// TODO: remove support for widgetEventPrefix
-			// always use the name + a colon as the prefix, e.g., draggable:start
-			// don't prefix for widgets that aren't DOM-based
-			widgetEventPrefix: existingConstructor ? ( basePrototype.widgetEventPrefix || name ) : name
-		}, proxiedPrototype, {
-			constructor: constructor,
-			namespace: namespace,
-			widgetName: name,
-			widgetFullName: fullName
-		} );
-
-		// If this widget is being redefined then we need to find all widgets that
-		// are inheriting from it and redefine all of them so that they inherit from
-		// the new version of this widget. We're essentially trying to replace one
-		// level in the prototype chain.
-		if ( existingConstructor ) {
-			$.each( existingConstructor._childConstructors, function( i, child ) {
-				var childPrototype = child.prototype;
-
-				// Redefine the child widget using the same prototype that was
-				// originally used, but inherit from the new version of the base
-				$.widget( childPrototype.namespace + "." + childPrototype.widgetName, constructor,
-					child._proto );
-			} );
-
-			// Remove the list of existing child constructors from the old constructor
-			// so the old child constructors can be garbage collected
-			delete existingConstructor._childConstructors;
-		} else {
-			base._childConstructors.push( constructor );
-		}
-
-		$.widget.bridge( name, constructor );
-
-		return constructor;
-	};
-
-	$.widget.extend = function( target ) {
-		var input = widgetSlice.call( arguments, 1 );
-		var inputIndex = 0;
-		var inputLength = input.length;
-		var key;
-		var value;
-
-		for ( ; inputIndex < inputLength; inputIndex++ ) {
-			for ( key in input[ inputIndex ] ) {
-				value = input[ inputIndex ][ key ];
-				if ( widgetHasOwnProperty.call( input[ inputIndex ], key ) && value !== undefined ) {
-
-					// Clone objects
-					if ( $.isPlainObject( value ) ) {
-						target[ key ] = $.isPlainObject( target[ key ] ) ?
-							$.widget.extend( {}, target[ key ], value ) :
-
-							// Don't extend strings, arrays, etc. with objects
-							$.widget.extend( {}, value );
-
-					// Copy everything else by reference
-					} else {
-						target[ key ] = value;
-					}
-				}
-			}
-		}
-		return target;
-	};
-
-	$.widget.bridge = function( name, object ) {
-		var fullName = object.prototype.widgetFullName || name;
-		$.fn[ name ] = function( options ) {
-			var isMethodCall = typeof options === "string";
-			var args = widgetSlice.call( arguments, 1 );
-			var returnValue = this;
-
-			if ( isMethodCall ) {
-
-				// If this is an empty collection, we need to have the instance method
-				// return undefined instead of the jQuery instance
-				if ( !this.length && options === "instance" ) {
-					returnValue = undefined;
-				} else {
-					this.each( function() {
-						var methodValue;
-						var instance = $.data( this, fullName );
-
-						if ( options === "instance" ) {
-							returnValue = instance;
-							return false;
-						}
-
-						if ( !instance ) {
-							return $.error( "cannot call methods on " + name +
-								" prior to initialization; " +
-								"attempted to call method '" + options + "'" );
-						}
-
-						if ( typeof instance[ options ] !== "function" ||
-							options.charAt( 0 ) === "_" ) {
-							return $.error( "no such method '" + options + "' for " + name +
-								" widget instance" );
-						}
-
-						methodValue = instance[ options ].apply( instance, args );
-
-						if ( methodValue !== instance && methodValue !== undefined ) {
-							returnValue = methodValue && methodValue.jquery ?
-								returnValue.pushStack( methodValue.get() ) :
-								methodValue;
-							return false;
-						}
-					} );
-				}
-			} else {
-
-				// Allow multiple hashes to be passed on init
-				if ( args.length ) {
-					options = $.widget.extend.apply( null, [ options ].concat( args ) );
-				}
-
-				this.each( function() {
-					var instance = $.data( this, fullName );
-					if ( instance ) {
-						instance.option( options || {} );
-						if ( instance._init ) {
-							instance._init();
-						}
-					} else {
-						$.data( this, fullName, new object( options, this ) );
-					}
-				} );
-			}
-
-			return returnValue;
-		};
-	};
-
-	$.Widget = function( /* options, element */ ) {};
-	$.Widget._childConstructors = [];
-
-	$.Widget.prototype = {
-		widgetName: "widget",
-		widgetEventPrefix: "",
-		defaultElement: "<div>",
-
-		options: {
-			classes: {},
-			disabled: false,
-
-			// Callbacks
-			create: null
-		},
-
-		_createWidget: function( options, element ) {
-			element = $( element || this.defaultElement || this )[ 0 ];
-			this.element = $( element );
-			this.uuid = widgetUuid++;
-			this.eventNamespace = "." + this.widgetName + this.uuid;
-
-			this.bindings = $();
-			this.hoverable = $();
-			this.focusable = $();
-			this.classesElementLookup = {};
-
-			if ( element !== this ) {
-				$.data( element, this.widgetFullName, this );
-				this._on( true, this.element, {
-					remove: function( event ) {
-						if ( event.target === element ) {
-							this.destroy();
-						}
-					}
-				} );
-				this.document = $( element.style ?
-
-					// Element within the document
-					element.ownerDocument :
-
-					// Element is window or document
-					element.document || element );
-				this.window = $( this.document[ 0 ].defaultView || this.document[ 0 ].parentWindow );
-			}
-
-			this.options = $.widget.extend( {},
-				this.options,
-				this._getCreateOptions(),
-				options );
-
-			this._create();
-
-			if ( this.options.disabled ) {
-				this._setOptionDisabled( this.options.disabled );
-			}
-
-			this._trigger( "create", null, this._getCreateEventData() );
-			this._init();
-		},
-
-		_getCreateOptions: function() {
-			return {};
-		},
-
-		_getCreateEventData: $.noop,
-
-		_create: $.noop,
-
-		_init: $.noop,
-
-		destroy: function() {
-			var that = this;
-
-			this._destroy();
-			$.each( this.classesElementLookup, function( key, value ) {
-				that._removeClass( value, key );
-			} );
-
-			// We can probably remove the unbind calls in 2.0
-			// all event bindings should go through this._on()
-			this.element
-				.off( this.eventNamespace )
-				.removeData( this.widgetFullName );
-			this.widget()
-				.off( this.eventNamespace )
-				.removeAttr( "aria-disabled" );
-
-			// Clean up events and states
-			this.bindings.off( this.eventNamespace );
-		},
-
-		_destroy: $.noop,
-
-		widget: function() {
-			return this.element;
-		},
-
-		option: function( key, value ) {
-			var options = key;
-			var parts;
-			var curOption;
-			var i;
-
-			if ( arguments.length === 0 ) {
-
-				// Don't return a reference to the internal hash
-				return $.widget.extend( {}, this.options );
-			}
-
-			if ( typeof key === "string" ) {
-
-				// Handle nested keys, e.g., "foo.bar" => { foo: { bar: ___ } }
-				options = {};
-				parts = key.split( "." );
-				key = parts.shift();
-				if ( parts.length ) {
-					curOption = options[ key ] = $.widget.extend( {}, this.options[ key ] );
-					for ( i = 0; i < parts.length - 1; i++ ) {
-						curOption[ parts[ i ] ] = curOption[ parts[ i ] ] || {};
-						curOption = curOption[ parts[ i ] ];
-					}
-					key = parts.pop();
-					if ( arguments.length === 1 ) {
-						return curOption[ key ] === undefined ? null : curOption[ key ];
-					}
-					curOption[ key ] = value;
-				} else {
-					if ( arguments.length === 1 ) {
-						return this.options[ key ] === undefined ? null : this.options[ key ];
-					}
-					options[ key ] = value;
-				}
-			}
-
-			this._setOptions( options );
-
-			return this;
-		},
-
-		_setOptions: function( options ) {
-			var key;
-
-			for ( key in options ) {
-				this._setOption( key, options[ key ] );
-			}
-
-			return this;
-		},
-
-		_setOption: function( key, value ) {
-			if ( key === "classes" ) {
-				this._setOptionClasses( value );
-			}
-
-			this.options[ key ] = value;
-
-			if ( key === "disabled" ) {
-				this._setOptionDisabled( value );
-			}
-
-			return this;
-		},
-
-		_setOptionClasses: function( value ) {
-			var classKey, elements, currentElements;
-
-			for ( classKey in value ) {
-				currentElements = this.classesElementLookup[ classKey ];
-				if ( value[ classKey ] === this.options.classes[ classKey ] ||
-						!currentElements ||
-						!currentElements.length ) {
-					continue;
-				}
-
-				// We are doing this to create a new jQuery object because the _removeClass() call
-				// on the next line is going to destroy the reference to the current elements being
-				// tracked. We need to save a copy of this collection so that we can add the new classes
-				// below.
-				elements = $( currentElements.get() );
-				this._removeClass( currentElements, classKey );
-
-				// We don't use _addClass() here, because that uses this.options.classes
-				// for generating the string of classes. We want to use the value passed in from
-				// _setOption(), this is the new value of the classes option which was passed to
-				// _setOption(). We pass this value directly to _classes().
-				elements.addClass( this._classes( {
-					element: elements,
-					keys: classKey,
-					classes: value,
-					add: true
-				} ) );
-			}
-		},
-
-		_setOptionDisabled: function( value ) {
-			this._toggleClass( this.widget(), this.widgetFullName + "-disabled", null, !!value );
-
-			// If the widget is becoming disabled, then nothing is interactive
-			if ( value ) {
-				this._removeClass( this.hoverable, null, "ui-state-hover" );
-				this._removeClass( this.focusable, null, "ui-state-focus" );
-			}
-		},
-
-		enable: function() {
-			return this._setOptions( { disabled: false } );
-		},
-
-		disable: function() {
-			return this._setOptions( { disabled: true } );
-		},
-
-		_classes: function( options ) {
-			var full = [];
-			var that = this;
-
-			options = $.extend( {
-				element: this.element,
-				classes: this.options.classes || {}
-			}, options );
-
-			function bindRemoveEvent() {
-				options.element.each( function( _, element ) {
-					var isTracked = $.map( that.classesElementLookup, function( elements ) {
-						return elements;
-					} )
-						.some( function( elements ) {
-							return elements.is( element );
-						} );
-
-					if ( !isTracked ) {
-						that._on( $( element ), {
-							remove: "_untrackClassesElement"
-						} );
-					}
-				} );
-			}
-
-			function processClassString( classes, checkOption ) {
-				var current, i;
-				for ( i = 0; i < classes.length; i++ ) {
-					current = that.classesElementLookup[ classes[ i ] ] || $();
-					if ( options.add ) {
-						bindRemoveEvent();
-						current = $( $.uniqueSort( current.get().concat( options.element.get() ) ) );
-					} else {
-						current = $( current.not( options.element ).get() );
-					}
-					that.classesElementLookup[ classes[ i ] ] = current;
-					full.push( classes[ i ] );
-					if ( checkOption && options.classes[ classes[ i ] ] ) {
-						full.push( options.classes[ classes[ i ] ] );
-					}
-				}
-			}
-
-			if ( options.keys ) {
-				processClassString( options.keys.match( /\S+/g ) || [], true );
-			}
-			if ( options.extra ) {
-				processClassString( options.extra.match( /\S+/g ) || [] );
-			}
-
-			return full.join( " " );
-		},
-
-		_untrackClassesElement: function( event ) {
-			var that = this;
-			$.each( that.classesElementLookup, function( key, value ) {
-				if ( $.inArray( event.target, value ) !== -1 ) {
-					that.classesElementLookup[ key ] = $( value.not( event.target ).get() );
-				}
-			} );
-
-			this._off( $( event.target ) );
-		},
-
-		_removeClass: function( element, keys, extra ) {
-			return this._toggleClass( element, keys, extra, false );
-		},
-
-		_addClass: function( element, keys, extra ) {
-			return this._toggleClass( element, keys, extra, true );
-		},
-
-		_toggleClass: function( element, keys, extra, add ) {
-			add = ( typeof add === "boolean" ) ? add : extra;
-			var shift = ( typeof element === "string" || element === null ),
-				options = {
-					extra: shift ? keys : extra,
-					keys: shift ? element : keys,
-					element: shift ? this.element : element,
-					add: add
-				};
-			options.element.toggleClass( this._classes( options ), add );
-			return this;
-		},
-
-		_on: function( suppressDisabledCheck, element, handlers ) {
-			var delegateElement;
-			var instance = this;
-
-			// No suppressDisabledCheck flag, shuffle arguments
-			if ( typeof suppressDisabledCheck !== "boolean" ) {
-				handlers = element;
-				element = suppressDisabledCheck;
-				suppressDisabledCheck = false;
-			}
-
-			// No element argument, shuffle and use this.element
-			if ( !handlers ) {
-				handlers = element;
-				element = this.element;
-				delegateElement = this.widget();
-			} else {
-				element = delegateElement = $( element );
-				this.bindings = this.bindings.add( element );
-			}
-
-			$.each( handlers, function( event, handler ) {
-				function handlerProxy() {
-
-					// Allow widgets to customize the disabled handling
-					// - disabled as an array instead of boolean
-					// - disabled class as method for disabling individual parts
-					if ( !suppressDisabledCheck &&
-							( instance.options.disabled === true ||
-							$( this ).hasClass( "ui-state-disabled" ) ) ) {
-						return;
-					}
-					return ( typeof handler === "string" ? instance[ handler ] : handler )
-						.apply( instance, arguments );
-				}
-
-				// Copy the guid so direct unbinding works
-				if ( typeof handler !== "string" ) {
-					handlerProxy.guid = handler.guid =
-						handler.guid || handlerProxy.guid || $.guid++;
-				}
-
-				var match = event.match( /^([\w:-]*)\s*(.*)$/ );
-				var eventName = match[ 1 ] + instance.eventNamespace;
-				var selector = match[ 2 ];
-
-				if ( selector ) {
-					delegateElement.on( eventName, selector, handlerProxy );
-				} else {
-					element.on( eventName, handlerProxy );
-				}
-			} );
-		},
-
-		_off: function( element, eventName ) {
-			eventName = ( eventName || "" ).split( " " ).join( this.eventNamespace + " " ) +
-				this.eventNamespace;
-			element.off( eventName );
-
-			// Clear the stack to avoid memory leaks (#10056)
-			this.bindings = $( this.bindings.not( element ).get() );
-			this.focusable = $( this.focusable.not( element ).get() );
-			this.hoverable = $( this.hoverable.not( element ).get() );
-		},
-
-		_delay: function( handler, delay ) {
-			function handlerProxy() {
-				return ( typeof handler === "string" ? instance[ handler ] : handler )
-					.apply( instance, arguments );
-			}
-			var instance = this;
-			return setTimeout( handlerProxy, delay || 0 );
-		},
-
-		_hoverable: function( element ) {
-			this.hoverable = this.hoverable.add( element );
-			this._on( element, {
-				mouseenter: function( event ) {
-					this._addClass( $( event.currentTarget ), null, "ui-state-hover" );
-				},
-				mouseleave: function( event ) {
-					this._removeClass( $( event.currentTarget ), null, "ui-state-hover" );
-				}
-			} );
-		},
-
-		_focusable: function( element ) {
-			this.focusable = this.focusable.add( element );
-			this._on( element, {
-				focusin: function( event ) {
-					this._addClass( $( event.currentTarget ), null, "ui-state-focus" );
-				},
-				focusout: function( event ) {
-					this._removeClass( $( event.currentTarget ), null, "ui-state-focus" );
-				}
-			} );
-		},
-
-		_trigger: function( type, event, data ) {
-			var prop, orig;
-			var callback = this.options[ type ];
-
-			data = data || {};
-			event = $.Event( event );
-			event.type = ( type === this.widgetEventPrefix ?
-				type :
-				this.widgetEventPrefix + type ).toLowerCase();
-
-			// The original event may come from any element
-			// so we need to reset the target on the new event
-			event.target = this.element[ 0 ];
-
-			// Copy original event properties over to the new event
-			orig = event.originalEvent;
-			if ( orig ) {
-				for ( prop in orig ) {
-					if ( !( prop in event ) ) {
-						event[ prop ] = orig[ prop ];
-					}
-				}
-			}
-
-			this.element.trigger( event, data );
-			return !( typeof callback === "function" &&
-				callback.apply( this.element[ 0 ], [ event ].concat( data ) ) === false ||
-				event.isDefaultPrevented() );
-		}
-	};
-
-	$.each( { show: "fadeIn", hide: "fadeOut" }, function( method, defaultEffect ) {
-		$.Widget.prototype[ "_" + method ] = function( element, options, callback ) {
-			if ( typeof options === "string" ) {
-				options = { effect: options };
-			}
-
-			var hasOptions;
-			var effectName = !options ?
-				method :
-				options === true || typeof options === "number" ?
-					defaultEffect :
-					options.effect || defaultEffect;
-
-			options = options || {};
-			if ( typeof options === "number" ) {
-				options = { duration: options };
-			} else if ( options === true ) {
-				options = {};
-			}
-
-			hasOptions = !$.isEmptyObject( options );
-			options.complete = callback;
-
-			if ( options.delay ) {
-				element.delay( options.delay );
-			}
-
-			if ( hasOptions && $.effects && $.effects.effect[ effectName ] ) {
-				element[ method ]( options );
-			} else if ( effectName !== method && element[ effectName ] ) {
-				element[ effectName ]( options.duration, options.easing, callback );
-			} else {
-				element.queue( function( next ) {
-					$( this )[ method ]();
-					if ( callback ) {
-						callback.call( element[ 0 ] );
-					}
-					next();
-				} );
-			}
-		};
-	} );
-
-	var widget = $.widget;
-
-
-	/*!
-	 * jQuery UI Position 1.13.0
-	 * http://jqueryui.com
-	 *
-	 * Copyright jQuery Foundation and other contributors
-	 * Released under the MIT license.
-	 * http://jquery.org/license
-	 *
-	 * http://api.jqueryui.com/position/
-	 */
-
-	//>>label: Position
-	//>>group: Core
-	//>>description: Positions elements relative to other elements.
-	//>>docs: http://api.jqueryui.com/position/
-	//>>demos: http://jqueryui.com/position/
-
-
-	( function() {
-	var cachedScrollbarWidth,
-		max = Math.max,
-		abs = Math.abs,
-		rhorizontal = /left|center|right/,
-		rvertical = /top|center|bottom/,
-		roffset = /[\+\-]\d+(\.[\d]+)?%?/,
-		rposition = /^\w+/,
-		rpercent = /%$/,
-		_position = $.fn.position;
-
-	function getOffsets( offsets, width, height ) {
-		return [
-			parseFloat( offsets[ 0 ] ) * ( rpercent.test( offsets[ 0 ] ) ? width / 100 : 1 ),
-			parseFloat( offsets[ 1 ] ) * ( rpercent.test( offsets[ 1 ] ) ? height / 100 : 1 )
-		];
-	}
-
-	function parseCss( element, property ) {
-		return parseInt( $.css( element, property ), 10 ) || 0;
-	}
-
-	function isWindow( obj ) {
-		return obj != null && obj === obj.window;
-	}
-
-	function getDimensions( elem ) {
-		var raw = elem[ 0 ];
-		if ( raw.nodeType === 9 ) {
-			return {
-				width: elem.width(),
-				height: elem.height(),
-				offset: { top: 0, left: 0 }
-			};
-		}
-		if ( isWindow( raw ) ) {
-			return {
-				width: elem.width(),
-				height: elem.height(),
-				offset: { top: elem.scrollTop(), left: elem.scrollLeft() }
-			};
-		}
-		if ( raw.preventDefault ) {
-			return {
-				width: 0,
-				height: 0,
-				offset: { top: raw.pageY, left: raw.pageX }
-			};
-		}
-		return {
-			width: elem.outerWidth(),
-			height: elem.outerHeight(),
-			offset: elem.offset()
-		};
-	}
-
-	$.position = {
-		scrollbarWidth: function() {
-			if ( cachedScrollbarWidth !== undefined ) {
-				return cachedScrollbarWidth;
-			}
-			var w1, w2,
-				div = $( "<div style=" +
-					"'display:block;position:absolute;width:200px;height:200px;overflow:hidden;'>" +
-					"<div style='height:300px;width:auto;'></div></div>" ),
-				innerDiv = div.children()[ 0 ];
-
-			$( "body" ).append( div );
-			w1 = innerDiv.offsetWidth;
-			div.css( "overflow", "scroll" );
-
-			w2 = innerDiv.offsetWidth;
-
-			if ( w1 === w2 ) {
-				w2 = div[ 0 ].clientWidth;
-			}
-
-			div.remove();
-
-			return ( cachedScrollbarWidth = w1 - w2 );
-		},
-		getScrollInfo: function( within ) {
-			var overflowX = within.isWindow || within.isDocument ? "" :
-					within.element.css( "overflow-x" ),
-				overflowY = within.isWindow || within.isDocument ? "" :
-					within.element.css( "overflow-y" ),
-				hasOverflowX = overflowX === "scroll" ||
-					( overflowX === "auto" && within.width < within.element[ 0 ].scrollWidth ),
-				hasOverflowY = overflowY === "scroll" ||
-					( overflowY === "auto" && within.height < within.element[ 0 ].scrollHeight );
-			return {
-				width: hasOverflowY ? $.position.scrollbarWidth() : 0,
-				height: hasOverflowX ? $.position.scrollbarWidth() : 0
-			};
-		},
-		getWithinInfo: function( element ) {
-			var withinElement = $( element || window ),
-				isElemWindow = isWindow( withinElement[ 0 ] ),
-				isDocument = !!withinElement[ 0 ] && withinElement[ 0 ].nodeType === 9,
-				hasOffset = !isElemWindow && !isDocument;
-			return {
-				element: withinElement,
-				isWindow: isElemWindow,
-				isDocument: isDocument,
-				offset: hasOffset ? $( element ).offset() : { left: 0, top: 0 },
-				scrollLeft: withinElement.scrollLeft(),
-				scrollTop: withinElement.scrollTop(),
-				width: withinElement.outerWidth(),
-				height: withinElement.outerHeight()
-			};
-		}
-	};
-
-	$.fn.position = function( options ) {
-		if ( !options || !options.of ) {
-			return _position.apply( this, arguments );
-		}
-
-		// Make a copy, we don't want to modify arguments
-		options = $.extend( {}, options );
-
-		var atOffset, targetWidth, targetHeight, targetOffset, basePosition, dimensions,
-
-			// Make sure string options are treated as CSS selectors
-			target = typeof options.of === "string" ?
-				$( document ).find( options.of ) :
-				$( options.of ),
-
-			within = $.position.getWithinInfo( options.within ),
-			scrollInfo = $.position.getScrollInfo( within ),
-			collision = ( options.collision || "flip" ).split( " " ),
-			offsets = {};
-
-		dimensions = getDimensions( target );
-		if ( target[ 0 ].preventDefault ) {
-
-			// Force left top to allow flipping
-			options.at = "left top";
-		}
-		targetWidth = dimensions.width;
-		targetHeight = dimensions.height;
-		targetOffset = dimensions.offset;
-
-		// Clone to reuse original targetOffset later
-		basePosition = $.extend( {}, targetOffset );
-
-		// Force my and at to have valid horizontal and vertical positions
-		// if a value is missing or invalid, it will be converted to center
-		$.each( [ "my", "at" ], function() {
-			var pos = ( options[ this ] || "" ).split( " " ),
-				horizontalOffset,
-				verticalOffset;
-
-			if ( pos.length === 1 ) {
-				pos = rhorizontal.test( pos[ 0 ] ) ?
-					pos.concat( [ "center" ] ) :
-					rvertical.test( pos[ 0 ] ) ?
-						[ "center" ].concat( pos ) :
-						[ "center", "center" ];
-			}
-			pos[ 0 ] = rhorizontal.test( pos[ 0 ] ) ? pos[ 0 ] : "center";
-			pos[ 1 ] = rvertical.test( pos[ 1 ] ) ? pos[ 1 ] : "center";
-
-			// Calculate offsets
-			horizontalOffset = roffset.exec( pos[ 0 ] );
-			verticalOffset = roffset.exec( pos[ 1 ] );
-			offsets[ this ] = [
-				horizontalOffset ? horizontalOffset[ 0 ] : 0,
-				verticalOffset ? verticalOffset[ 0 ] : 0
-			];
-
-			// Reduce to just the positions without the offsets
-			options[ this ] = [
-				rposition.exec( pos[ 0 ] )[ 0 ],
-				rposition.exec( pos[ 1 ] )[ 0 ]
-			];
-		} );
-
-		// Normalize collision option
-		if ( collision.length === 1 ) {
-			collision[ 1 ] = collision[ 0 ];
-		}
-
-		if ( options.at[ 0 ] === "right" ) {
-			basePosition.left += targetWidth;
-		} else if ( options.at[ 0 ] === "center" ) {
-			basePosition.left += targetWidth / 2;
-		}
-
-		if ( options.at[ 1 ] === "bottom" ) {
-			basePosition.top += targetHeight;
-		} else if ( options.at[ 1 ] === "center" ) {
-			basePosition.top += targetHeight / 2;
-		}
-
-		atOffset = getOffsets( offsets.at, targetWidth, targetHeight );
-		basePosition.left += atOffset[ 0 ];
-		basePosition.top += atOffset[ 1 ];
-
-		return this.each( function() {
-			var collisionPosition, using,
-				elem = $( this ),
-				elemWidth = elem.outerWidth(),
-				elemHeight = elem.outerHeight(),
-				marginLeft = parseCss( this, "marginLeft" ),
-				marginTop = parseCss( this, "marginTop" ),
-				collisionWidth = elemWidth + marginLeft + parseCss( this, "marginRight" ) +
-					scrollInfo.width,
-				collisionHeight = elemHeight + marginTop + parseCss( this, "marginBottom" ) +
-					scrollInfo.height,
-				position = $.extend( {}, basePosition ),
-				myOffset = getOffsets( offsets.my, elem.outerWidth(), elem.outerHeight() );
-
-			if ( options.my[ 0 ] === "right" ) {
-				position.left -= elemWidth;
-			} else if ( options.my[ 0 ] === "center" ) {
-				position.left -= elemWidth / 2;
-			}
-
-			if ( options.my[ 1 ] === "bottom" ) {
-				position.top -= elemHeight;
-			} else if ( options.my[ 1 ] === "center" ) {
-				position.top -= elemHeight / 2;
-			}
-
-			position.left += myOffset[ 0 ];
-			position.top += myOffset[ 1 ];
-
-			collisionPosition = {
-				marginLeft: marginLeft,
-				marginTop: marginTop
-			};
-
-			$.each( [ "left", "top" ], function( i, dir ) {
-				if ( $.ui.position[ collision[ i ] ] ) {
-					$.ui.position[ collision[ i ] ][ dir ]( position, {
-						targetWidth: targetWidth,
-						targetHeight: targetHeight,
-						elemWidth: elemWidth,
-						elemHeight: elemHeight,
-						collisionPosition: collisionPosition,
-						collisionWidth: collisionWidth,
-						collisionHeight: collisionHeight,
-						offset: [ atOffset[ 0 ] + myOffset[ 0 ], atOffset [ 1 ] + myOffset[ 1 ] ],
-						my: options.my,
-						at: options.at,
-						within: within,
-						elem: elem
-					} );
-				}
-			} );
-
-			if ( options.using ) {
-
-				// Adds feedback as second argument to using callback, if present
-				using = function( props ) {
-					var left = targetOffset.left - position.left,
-						right = left + targetWidth - elemWidth,
-						top = targetOffset.top - position.top,
-						bottom = top + targetHeight - elemHeight,
-						feedback = {
-							target: {
-								element: target,
-								left: targetOffset.left,
-								top: targetOffset.top,
-								width: targetWidth,
-								height: targetHeight
-							},
-							element: {
-								element: elem,
-								left: position.left,
-								top: position.top,
-								width: elemWidth,
-								height: elemHeight
-							},
-							horizontal: right < 0 ? "left" : left > 0 ? "right" : "center",
-							vertical: bottom < 0 ? "top" : top > 0 ? "bottom" : "middle"
-						};
-					if ( targetWidth < elemWidth && abs( left + right ) < targetWidth ) {
-						feedback.horizontal = "center";
-					}
-					if ( targetHeight < elemHeight && abs( top + bottom ) < targetHeight ) {
-						feedback.vertical = "middle";
-					}
-					if ( max( abs( left ), abs( right ) ) > max( abs( top ), abs( bottom ) ) ) {
-						feedback.important = "horizontal";
-					} else {
-						feedback.important = "vertical";
-					}
-					options.using.call( this, props, feedback );
-				};
-			}
-
-			elem.offset( $.extend( position, { using: using } ) );
-		} );
-	};
-
-	$.ui.position = {
-		fit: {
-			left: function( position, data ) {
-				var within = data.within,
-					withinOffset = within.isWindow ? within.scrollLeft : within.offset.left,
-					outerWidth = within.width,
-					collisionPosLeft = position.left - data.collisionPosition.marginLeft,
-					overLeft = withinOffset - collisionPosLeft,
-					overRight = collisionPosLeft + data.collisionWidth - outerWidth - withinOffset,
-					newOverRight;
-
-				// Element is wider than within
-				if ( data.collisionWidth > outerWidth ) {
-
-					// Element is initially over the left side of within
-					if ( overLeft > 0 && overRight <= 0 ) {
-						newOverRight = position.left + overLeft + data.collisionWidth - outerWidth -
-							withinOffset;
-						position.left += overLeft - newOverRight;
-
-					// Element is initially over right side of within
-					} else if ( overRight > 0 && overLeft <= 0 ) {
-						position.left = withinOffset;
-
-					// Element is initially over both left and right sides of within
-					} else {
-						if ( overLeft > overRight ) {
-							position.left = withinOffset + outerWidth - data.collisionWidth;
-						} else {
-							position.left = withinOffset;
-						}
-					}
-
-				// Too far left -> align with left edge
-				} else if ( overLeft > 0 ) {
-					position.left += overLeft;
-
-				// Too far right -> align with right edge
-				} else if ( overRight > 0 ) {
-					position.left -= overRight;
-
-				// Adjust based on position and margin
-				} else {
-					position.left = max( position.left - collisionPosLeft, position.left );
-				}
-			},
-			top: function( position, data ) {
-				var within = data.within,
-					withinOffset = within.isWindow ? within.scrollTop : within.offset.top,
-					outerHeight = data.within.height,
-					collisionPosTop = position.top - data.collisionPosition.marginTop,
-					overTop = withinOffset - collisionPosTop,
-					overBottom = collisionPosTop + data.collisionHeight - outerHeight - withinOffset,
-					newOverBottom;
-
-				// Element is taller than within
-				if ( data.collisionHeight > outerHeight ) {
-
-					// Element is initially over the top of within
-					if ( overTop > 0 && overBottom <= 0 ) {
-						newOverBottom = position.top + overTop + data.collisionHeight - outerHeight -
-							withinOffset;
-						position.top += overTop - newOverBottom;
-
-					// Element is initially over bottom of within
-					} else if ( overBottom > 0 && overTop <= 0 ) {
-						position.top = withinOffset;
-
-					// Element is initially over both top and bottom of within
-					} else {
-						if ( overTop > overBottom ) {
-							position.top = withinOffset + outerHeight - data.collisionHeight;
-						} else {
-							position.top = withinOffset;
-						}
-					}
-
-				// Too far up -> align with top
-				} else if ( overTop > 0 ) {
-					position.top += overTop;
-
-				// Too far down -> align with bottom edge
-				} else if ( overBottom > 0 ) {
-					position.top -= overBottom;
-
-				// Adjust based on position and margin
-				} else {
-					position.top = max( position.top - collisionPosTop, position.top );
-				}
-			}
-		},
-		flip: {
-			left: function( position, data ) {
-				var within = data.within,
-					withinOffset = within.offset.left + within.scrollLeft,
-					outerWidth = within.width,
-					offsetLeft = within.isWindow ? within.scrollLeft : within.offset.left,
-					collisionPosLeft = position.left - data.collisionPosition.marginLeft,
-					overLeft = collisionPosLeft - offsetLeft,
-					overRight = collisionPosLeft + data.collisionWidth - outerWidth - offsetLeft,
-					myOffset = data.my[ 0 ] === "left" ?
-						-data.elemWidth :
-						data.my[ 0 ] === "right" ?
-							data.elemWidth :
-							0,
-					atOffset = data.at[ 0 ] === "left" ?
-						data.targetWidth :
-						data.at[ 0 ] === "right" ?
-							-data.targetWidth :
-							0,
-					offset = -2 * data.offset[ 0 ],
-					newOverRight,
-					newOverLeft;
-
-				if ( overLeft < 0 ) {
-					newOverRight = position.left + myOffset + atOffset + offset + data.collisionWidth -
-						outerWidth - withinOffset;
-					if ( newOverRight < 0 || newOverRight < abs( overLeft ) ) {
-						position.left += myOffset + atOffset + offset;
-					}
-				} else if ( overRight > 0 ) {
-					newOverLeft = position.left - data.collisionPosition.marginLeft + myOffset +
-						atOffset + offset - offsetLeft;
-					if ( newOverLeft > 0 || abs( newOverLeft ) < overRight ) {
-						position.left += myOffset + atOffset + offset;
-					}
-				}
-			},
-			top: function( position, data ) {
-				var within = data.within,
-					withinOffset = within.offset.top + within.scrollTop,
-					outerHeight = within.height,
-					offsetTop = within.isWindow ? within.scrollTop : within.offset.top,
-					collisionPosTop = position.top - data.collisionPosition.marginTop,
-					overTop = collisionPosTop - offsetTop,
-					overBottom = collisionPosTop + data.collisionHeight - outerHeight - offsetTop,
-					top = data.my[ 1 ] === "top",
-					myOffset = top ?
-						-data.elemHeight :
-						data.my[ 1 ] === "bottom" ?
-							data.elemHeight :
-							0,
-					atOffset = data.at[ 1 ] === "top" ?
-						data.targetHeight :
-						data.at[ 1 ] === "bottom" ?
-							-data.targetHeight :
-							0,
-					offset = -2 * data.offset[ 1 ],
-					newOverTop,
-					newOverBottom;
-				if ( overTop < 0 ) {
-					newOverBottom = position.top + myOffset + atOffset + offset + data.collisionHeight -
-						outerHeight - withinOffset;
-					if ( newOverBottom < 0 || newOverBottom < abs( overTop ) ) {
-						position.top += myOffset + atOffset + offset;
-					}
-				} else if ( overBottom > 0 ) {
-					newOverTop = position.top - data.collisionPosition.marginTop + myOffset + atOffset +
-						offset - offsetTop;
-					if ( newOverTop > 0 || abs( newOverTop ) < overBottom ) {
-						position.top += myOffset + atOffset + offset;
-					}
-				}
-			}
-		},
-		flipfit: {
-			left: function() {
-				$.ui.position.flip.left.apply( this, arguments );
-				$.ui.position.fit.left.apply( this, arguments );
-			},
-			top: function() {
-				$.ui.position.flip.top.apply( this, arguments );
-				$.ui.position.fit.top.apply( this, arguments );
-			}
-		}
-	};
-
-	} )();
-
-	var position = $.ui.position;
-
-
-	/*!
-	 * jQuery UI Support for jQuery core 1.8.x and newer 1.13.0
-	 * http://jqueryui.com
-	 *
-	 * Copyright jQuery Foundation and other contributors
-	 * Released under the MIT license.
-	 * http://jquery.org/license
-	 *
-	 */
-
-	//>>label: jQuery 1.8+ Support
-	//>>group: Core
-	//>>description: Support version 1.8.x and newer of jQuery core
-
-
-	// Support: jQuery 1.9.x or older
-	// $.expr[ ":" ] is deprecated.
-	if ( !$.expr.pseudos ) {
-		$.expr.pseudos = $.expr[ ":" ];
-	}
-
-	// Support: jQuery 1.11.x or older
-	// $.unique has been renamed to $.uniqueSort
-	if ( !$.uniqueSort ) {
-		$.uniqueSort = $.unique;
-	}
-
-	// Support: jQuery 2.2.x or older.
-	// This method has been defined in jQuery 3.0.0.
-	// Code from https://github.com/jquery/jquery/blob/e539bac79e666bba95bba86d690b4e609dca2286/src/selector/escapeSelector.js
-	if ( !$.escapeSelector ) {
-
-		// CSS string/identifier serialization
-		// https://drafts.csswg.org/cssom/#common-serializing-idioms
-		var rcssescape = /([\0-\x1f\x7f]|^-?\d)|^-$|[^\x80-\uFFFF\w-]/g;
-
-		var fcssescape = function( ch, asCodePoint ) {
-			if ( asCodePoint ) {
-
-				// U+0000 NULL becomes U+FFFD REPLACEMENT CHARACTER
-				if ( ch === "\0" ) {
-					return "\uFFFD";
-				}
-
-				// Control characters and (dependent upon position) numbers get escaped as code points
-				return ch.slice( 0, -1 ) + "\\" + ch.charCodeAt( ch.length - 1 ).toString( 16 ) + " ";
-			}
-
-			// Other potentially-special ASCII characters get backslash-escaped
-			return "\\" + ch;
-		};
-
-		$.escapeSelector = function( sel ) {
-			return ( sel + "" ).replace( rcssescape, fcssescape );
-		};
-	}
-
-	// Support: jQuery 3.4.x or older
-	// These methods have been defined in jQuery 3.5.0.
-	if ( !$.fn.even || !$.fn.odd ) {
-		$.fn.extend( {
-			even: function() {
-				return this.filter( function( i ) {
-					return i % 2 === 0;
-				} );
-			},
-			odd: function() {
-				return this.filter( function( i ) {
-					return i % 2 === 1;
-				} );
-			}
-		} );
-	}
-
-	;
-	/*!
-	 * jQuery UI Keycode 1.13.0
-	 * http://jqueryui.com
-	 *
-	 * Copyright jQuery Foundation and other contributors
-	 * Released under the MIT license.
-	 * http://jquery.org/license
-	 */
-
-	//>>label: Keycode
-	//>>group: Core
-	//>>description: Provide keycodes as keynames
-	//>>docs: http://api.jqueryui.com/jQuery.ui.keyCode/
-
-
-	var keycode = $.ui.keyCode = {
-		BACKSPACE: 8,
-		COMMA: 188,
-		DELETE: 46,
-		DOWN: 40,
-		END: 35,
-		ENTER: 13,
-		ESCAPE: 27,
-		HOME: 36,
-		LEFT: 37,
-		PAGE_DOWN: 34,
-		PAGE_UP: 33,
-		PERIOD: 190,
-		RIGHT: 39,
-		SPACE: 32,
-		TAB: 9,
-		UP: 38
-	};
-
-
-	/*!
-	 * jQuery UI Scroll Parent 1.13.0
-	 * http://jqueryui.com
-	 *
-	 * Copyright jQuery Foundation and other contributors
-	 * Released under the MIT license.
-	 * http://jquery.org/license
-	 */
-
-	//>>label: scrollParent
-	//>>group: Core
-	//>>description: Get the closest ancestor element that is scrollable.
-	//>>docs: http://api.jqueryui.com/scrollParent/
-
-
-	var scrollParent = $.fn.scrollParent = function( includeHidden ) {
-		var position = this.css( "position" ),
-			excludeStaticParent = position === "absolute",
-			overflowRegex = includeHidden ? /(auto|scroll|hidden)/ : /(auto|scroll)/,
-			scrollParent = this.parents().filter( function() {
-				var parent = $( this );
-				if ( excludeStaticParent && parent.css( "position" ) === "static" ) {
-					return false;
-				}
-				return overflowRegex.test( parent.css( "overflow" ) + parent.css( "overflow-y" ) +
-					parent.css( "overflow-x" ) );
-			} ).eq( 0 );
-
-		return position === "fixed" || !scrollParent.length ?
-			$( this[ 0 ].ownerDocument || document ) :
-			scrollParent;
-	};
-
-
-	/*!
-	 * jQuery UI Unique ID 1.13.0
-	 * http://jqueryui.com
-	 *
-	 * Copyright jQuery Foundation and other contributors
-	 * Released under the MIT license.
-	 * http://jquery.org/license
-	 */
-
-	//>>label: uniqueId
-	//>>group: Core
-	//>>description: Functions to generate and remove uniqueId's
-	//>>docs: http://api.jqueryui.com/uniqueId/
-
-
-	var uniqueId = $.fn.extend( {
-		uniqueId: ( function() {
-			var uuid = 0;
-
-			return function() {
-				return this.each( function() {
-					if ( !this.id ) {
-						this.id = "ui-id-" + ( ++uuid );
-					}
-				} );
-			};
-		} )(),
-
-		removeUniqueId: function() {
-			return this.each( function() {
-				if ( /^ui-id-\d+$/.test( this.id ) ) {
-					$( this ).removeAttr( "id" );
-				}
-			} );
-		}
-	} );
-
-
-
-
-// NOTE: Original jQuery UI wrapper was replaced. See README-Fancytree.md
-// }));
-})(jQuery);
-
-(function( factory ) {
-	if ( typeof define === "function" && define.amd ) {
-		// AMD. Register as an anonymous module.
-		define( [ "jquery" ], factory );
-	} else if ( typeof module === "object" && module.exports ) {
-		// Node/CommonJS
-		module.exports = factory(require("jquery"));
-	} else {
-		// Browser globals
-		factory( jQuery );
-	}
-}(function( $ ) {
-
-
-/*! Fancytree Core *//*!
+/*!
  * jquery.fancytree.js
  * Tree view control with support for lazy loading and much more.
  * https://github.com/mar10/fancytree/
  *
- * Copyright (c) 2008-2021, Martin Wendt (https://wwWendt.de)
+ * Copyright (c) 2008-2023, Martin Wendt (https://wwWendt.de)
  * Released under the MIT license
  * https://github.com/mar10/fancytree/wiki/LicenseInfo
  *
- * @version 2.38.2
- * @date 2022-06-30T18:24:06Z
+ * @version 2.38.3
+ * @date 2023-02-01T20:52:50Z
  */
 
 /** Core Fancytree module.
@@ -8212,7 +6755,7 @@
 		{
 			/** Version number `"MAJOR.MINOR.PATCH"`
 			 * @type {string} */
-			version: "2.38.2", // Set to semver by 'grunt release'
+			version: "2.38.3", // Set to semver by 'grunt release'
 			/** @type {string}
 			 * @description `"production" for release builds` */
 			buildType: "production", // Set to 'production' by 'grunt build'
@@ -8830,8 +7373,7 @@
 	return $.ui.fancytree;
 }); // End of closure
 
-
-/*! Extension 'jquery.fancytree.childcounter.js' */// Extending Fancytree
+// Extending Fancytree
 // ===================
 //
 // See also the [live demo](https://wwWendt.de/tech/fancytree/demo/sample-ext-childcounter.html) of this code.
@@ -8847,13 +7389,13 @@
  * Add a child counter bubble to tree nodes.
  * (Extension module for jquery.fancytree.js: https://github.com/mar10/fancytree/)
  *
- * Copyright (c) 2008-2021, Martin Wendt (https://wwWendt.de)
+ * Copyright (c) 2008-2023, Martin Wendt (https://wwWendt.de)
  *
  * Released under the MIT license
  * https://github.com/mar10/fancytree/wiki/LicenseInfo
  *
- * @version 2.38.2
- * @date 2022-06-30T18:24:06Z
+ * @version 2.38.3
+ * @date 2023-02-01T20:52:50Z
  */
 
 // To keep the global namespace clean, we wrap everything in a closure.
@@ -8974,7 +7516,7 @@
 		// Every extension must be registered by a unique name.
 		name: "childcounter",
 		// Version information should be compliant with [semver](http://semver.org)
-		version: "2.38.2",
+		version: "2.38.3",
 
 		// Extension specific options and their defaults.
 		// This options will be available as `tree.options.childcounter.hideExpanded`
@@ -9073,20 +7615,19 @@
 	return $.ui.fancytree;
 }); // End of closure
 
-
-/*! Extension 'jquery.fancytree.clones.js' *//*!
+/*!
  *
  * jquery.fancytree.clones.js
  * Support faster lookup of nodes by key and shared ref-ids.
  * (Extension module for jquery.fancytree.js: https://github.com/mar10/fancytree/)
  *
- * Copyright (c) 2008-2021, Martin Wendt (https://wwWendt.de)
+ * Copyright (c) 2008-2023, Martin Wendt (https://wwWendt.de)
  *
  * Released under the MIT license
  * https://github.com/mar10/fancytree/wiki/LicenseInfo
  *
- * @version 2.38.2
- * @date 2022-06-30T18:24:06Z
+ * @version 2.38.3
+ * @date 2023-02-01T20:52:50Z
  */
 
 (function (factory) {
@@ -9439,7 +7980,7 @@
 	 */
 	$.ui.fancytree.registerExtension({
 		name: "clones",
-		version: "2.38.2",
+		version: "2.38.3",
 		// Default options for this extension.
 		options: {
 			highlightActiveClones: true, // set 'fancytree-active-clone' on active clones and all peers
@@ -9589,20 +8130,818 @@
 	return $.ui.fancytree;
 }); // End of closure
 
+/*!
+ * jquery.fancytree.dnd.js
+ *
+ * Drag-and-drop support (jQuery UI draggable/droppable).
+ * (Extension module for jquery.fancytree.js: https://github.com/mar10/fancytree/)
+ *
+ * Copyright (c) 2008-2023, Martin Wendt (https://wwWendt.de)
+ *
+ * Released under the MIT license
+ * https://github.com/mar10/fancytree/wiki/LicenseInfo
+ *
+ * @version 2.38.3
+ * @date 2023-02-01T20:52:50Z
+ */
 
-/*! Extension 'jquery.fancytree.dnd5.js' *//*!
+(function (factory) {
+	if (typeof define === "function" && define.amd) {
+		// AMD. Register as an anonymous module.
+		define([
+			"jquery",
+			"jquery-ui/ui/widgets/draggable",
+			"jquery-ui/ui/widgets/droppable",
+			"./jquery.fancytree",
+		], factory);
+	} else if (typeof module === "object" && module.exports) {
+		// Node/CommonJS
+		require("./jquery.fancytree");
+		module.exports = factory(require("jquery"));
+	} else {
+		// Browser globals
+		factory(jQuery);
+	}
+})(function ($) {
+	"use strict";
+
+	/******************************************************************************
+	 * Private functions and variables
+	 */
+	var didRegisterDnd = false,
+		classDropAccept = "fancytree-drop-accept",
+		classDropAfter = "fancytree-drop-after",
+		classDropBefore = "fancytree-drop-before",
+		classDropOver = "fancytree-drop-over",
+		classDropReject = "fancytree-drop-reject",
+		classDropTarget = "fancytree-drop-target";
+
+	/* Convert number to string and prepend +/-; return empty string for 0.*/
+	function offsetString(n) {
+		// eslint-disable-next-line no-nested-ternary
+		return n === 0 ? "" : n > 0 ? "+" + n : "" + n;
+	}
+
+	//--- Extend ui.draggable event handling --------------------------------------
+
+	function _registerDnd() {
+		if (didRegisterDnd) {
+			return;
+		}
+
+		// Register proxy-functions for draggable.start/drag/stop
+
+		$.ui.plugin.add("draggable", "connectToFancytree", {
+			start: function (event, ui) {
+				// 'draggable' was renamed to 'ui-draggable' since jQueryUI 1.10
+				var draggable =
+						$(this).data("ui-draggable") ||
+						$(this).data("draggable"),
+					sourceNode = ui.helper.data("ftSourceNode") || null;
+
+				if (sourceNode) {
+					// Adjust helper offset, so cursor is slightly outside top/left corner
+					draggable.offset.click.top = -2;
+					draggable.offset.click.left = +16;
+					// Trigger dragStart event
+					// TODO: when called as connectTo..., the return value is ignored(?)
+					return sourceNode.tree.ext.dnd._onDragEvent(
+						"start",
+						sourceNode,
+						null,
+						event,
+						ui,
+						draggable
+					);
+				}
+			},
+			drag: function (event, ui) {
+				var ctx,
+					isHelper,
+					logObject,
+					// 'draggable' was renamed to 'ui-draggable' since jQueryUI 1.10
+					draggable =
+						$(this).data("ui-draggable") ||
+						$(this).data("draggable"),
+					sourceNode = ui.helper.data("ftSourceNode") || null,
+					prevTargetNode = ui.helper.data("ftTargetNode") || null,
+					targetNode = $.ui.fancytree.getNode(event.target),
+					dndOpts = sourceNode && sourceNode.tree.options.dnd;
+
+				// logObject = sourceNode || prevTargetNode || $.ui.fancytree;
+				// logObject.debug("Drag event:", event, event.shiftKey);
+				if (event.target && !targetNode) {
+					// We got a drag event, but the targetNode could not be found
+					// at the event location. This may happen,
+					// 1. if the mouse jumped over the drag helper,
+					// 2. or if a non-fancytree element is dragged
+					// We ignore it:
+					isHelper =
+						$(event.target).closest(
+							"div.fancytree-drag-helper,#fancytree-drop-marker"
+						).length > 0;
+					if (isHelper) {
+						logObject =
+							sourceNode || prevTargetNode || $.ui.fancytree;
+						logObject.debug("Drag event over helper: ignored.");
+						return;
+					}
+				}
+				ui.helper.data("ftTargetNode", targetNode);
+
+				if (dndOpts && dndOpts.updateHelper) {
+					ctx = sourceNode.tree._makeHookContext(sourceNode, event, {
+						otherNode: targetNode,
+						ui: ui,
+						draggable: draggable,
+						dropMarker: $("#fancytree-drop-marker"),
+					});
+					dndOpts.updateHelper.call(sourceNode.tree, sourceNode, ctx);
+				}
+
+				// Leaving a tree node
+				if (prevTargetNode && prevTargetNode !== targetNode) {
+					prevTargetNode.tree.ext.dnd._onDragEvent(
+						"leave",
+						prevTargetNode,
+						sourceNode,
+						event,
+						ui,
+						draggable
+					);
+				}
+				if (targetNode) {
+					if (!targetNode.tree.options.dnd.dragDrop) {
+						// not enabled as drop target
+					} else if (targetNode === prevTargetNode) {
+						// Moving over same node
+						targetNode.tree.ext.dnd._onDragEvent(
+							"over",
+							targetNode,
+							sourceNode,
+							event,
+							ui,
+							draggable
+						);
+					} else {
+						// Entering this node first time
+						targetNode.tree.ext.dnd._onDragEvent(
+							"enter",
+							targetNode,
+							sourceNode,
+							event,
+							ui,
+							draggable
+						);
+						targetNode.tree.ext.dnd._onDragEvent(
+							"over",
+							targetNode,
+							sourceNode,
+							event,
+							ui,
+							draggable
+						);
+					}
+				}
+				// else go ahead with standard event handling
+			},
+			stop: function (event, ui) {
+				var logObject,
+					// 'draggable' was renamed to 'ui-draggable' since jQueryUI 1.10:
+					draggable =
+						$(this).data("ui-draggable") ||
+						$(this).data("draggable"),
+					sourceNode = ui.helper.data("ftSourceNode") || null,
+					targetNode = ui.helper.data("ftTargetNode") || null,
+					dropped = event.type === "mouseup" && event.which === 1;
+
+				if (!dropped) {
+					logObject = sourceNode || targetNode || $.ui.fancytree;
+					logObject.debug("Drag was cancelled");
+				}
+				if (targetNode) {
+					if (dropped) {
+						targetNode.tree.ext.dnd._onDragEvent(
+							"drop",
+							targetNode,
+							sourceNode,
+							event,
+							ui,
+							draggable
+						);
+					}
+					targetNode.tree.ext.dnd._onDragEvent(
+						"leave",
+						targetNode,
+						sourceNode,
+						event,
+						ui,
+						draggable
+					);
+				}
+				if (sourceNode) {
+					sourceNode.tree.ext.dnd._onDragEvent(
+						"stop",
+						sourceNode,
+						null,
+						event,
+						ui,
+						draggable
+					);
+				}
+			},
+		});
+
+		didRegisterDnd = true;
+	}
+
+	/******************************************************************************
+	 * Drag and drop support
+	 */
+	function _initDragAndDrop(tree) {
+		var dnd = tree.options.dnd || null,
+			glyph = tree.options.glyph || null;
+
+		// Register 'connectToFancytree' option with ui.draggable
+		if (dnd) {
+			_registerDnd();
+		}
+		// Attach ui.draggable to this Fancytree instance
+		if (dnd && dnd.dragStart) {
+			tree.widget.element.draggable(
+				$.extend(
+					{
+						addClasses: false,
+						// DT issue 244: helper should be child of scrollParent:
+						appendTo: tree.$container,
+						//			appendTo: "body",
+						containment: false,
+						//			containment: "parent",
+						delay: 0,
+						distance: 4,
+						revert: false,
+						scroll: true, // to disable, also set css 'position: inherit' on ul.fancytree-container
+						scrollSpeed: 7,
+						scrollSensitivity: 10,
+						// Delegate draggable.start, drag, and stop events to our handler
+						connectToFancytree: true,
+						// Let source tree create the helper element
+						helper: function (event) {
+							var $helper,
+								$nodeTag,
+								opts,
+								sourceNode = $.ui.fancytree.getNode(
+									event.target
+								);
+
+							if (!sourceNode) {
+								// #405, DT issue 211: might happen, if dragging a table *header*
+								return "<div>ERROR?: helper requested but sourceNode not found</div>";
+							}
+							opts = sourceNode.tree.options.dnd;
+							$nodeTag = $(sourceNode.span);
+							// Only event and node argument is available
+							$helper = $(
+								"<div class='fancytree-drag-helper'><span class='fancytree-drag-helper-img' /></div>"
+							)
+								.css({ zIndex: 3, position: "relative" }) // so it appears above ext-wide selection bar
+								.append(
+									$nodeTag
+										.find("span.fancytree-title")
+										.clone()
+								);
+
+							// Attach node reference to helper object
+							$helper.data("ftSourceNode", sourceNode);
+
+							// Support glyph symbols instead of icons
+							if (glyph) {
+								$helper
+									.find(".fancytree-drag-helper-img")
+									.addClass(
+										glyph.map._addClass +
+											" " +
+											glyph.map.dragHelper
+									);
+							}
+							// Allow to modify the helper, e.g. to add multi-node-drag feedback
+							if (opts.initHelper) {
+								opts.initHelper.call(
+									sourceNode.tree,
+									sourceNode,
+									{
+										node: sourceNode,
+										tree: sourceNode.tree,
+										originalEvent: event,
+										ui: { helper: $helper },
+									}
+								);
+							}
+							// We return an unconnected element, so `draggable` will add this
+							// to the parent specified as `appendTo` option
+							return $helper;
+						},
+						start: function (event, ui) {
+							var sourceNode = ui.helper.data("ftSourceNode");
+							return !!sourceNode; // Abort dragging if no node could be found
+						},
+					},
+					tree.options.dnd.draggable
+				)
+			);
+		}
+		// Attach ui.droppable to this Fancytree instance
+		if (dnd && dnd.dragDrop) {
+			tree.widget.element.droppable(
+				$.extend(
+					{
+						addClasses: false,
+						tolerance: "intersect",
+						greedy: false,
+						/*
+			activate: function(event, ui) {
+				tree.debug("droppable - activate", event, ui, this);
+			},
+			create: function(event, ui) {
+				tree.debug("droppable - create", event, ui);
+			},
+			deactivate: function(event, ui) {
+				tree.debug("droppable - deactivate", event, ui);
+			},
+			drop: function(event, ui) {
+				tree.debug("droppable - drop", event, ui);
+			},
+			out: function(event, ui) {
+				tree.debug("droppable - out", event, ui);
+			},
+			over: function(event, ui) {
+				tree.debug("droppable - over", event, ui);
+			}
+*/
+					},
+					tree.options.dnd.droppable
+				)
+			);
+		}
+	}
+
+	/******************************************************************************
+	 *
+	 */
+
+	$.ui.fancytree.registerExtension({
+		name: "dnd",
+		version: "2.38.3",
+		// Default options for this extension.
+		options: {
+			// Make tree nodes accept draggables
+			autoExpandMS: 1000, // Expand nodes after n milliseconds of hovering.
+			draggable: null, // Additional options passed to jQuery draggable
+			droppable: null, // Additional options passed to jQuery droppable
+			focusOnClick: false, // Focus, although draggable cancels mousedown event (#270)
+			preventVoidMoves: true, // Prevent dropping nodes 'before self', etc.
+			preventRecursiveMoves: true, // Prevent dropping nodes on own descendants
+			smartRevert: true, // set draggable.revert = true if drop was rejected
+			dropMarkerOffsetX: -24, // absolute position offset for .fancytree-drop-marker relatively to ..fancytree-title (icon/img near a node accepting drop)
+			dropMarkerInsertOffsetX: -16, // additional offset for drop-marker with hitMode = "before"/"after"
+			// Events (drag support)
+			dragStart: null, // Callback(sourceNode, data), return true, to enable dnd
+			dragStop: null, // Callback(sourceNode, data)
+			initHelper: null, // Callback(sourceNode, data)
+			updateHelper: null, // Callback(sourceNode, data)
+			// Events (drop support)
+			dragEnter: null, // Callback(targetNode, data)
+			dragOver: null, // Callback(targetNode, data)
+			dragExpand: null, // Callback(targetNode, data), return false to prevent autoExpand
+			dragDrop: null, // Callback(targetNode, data)
+			dragLeave: null, // Callback(targetNode, data)
+		},
+
+		treeInit: function (ctx) {
+			var tree = ctx.tree;
+			this._superApply(arguments);
+			// issue #270: draggable eats mousedown events
+			if (tree.options.dnd.dragStart) {
+				tree.$container.on("mousedown", function (event) {
+					//				if( !tree.hasFocus() && ctx.options.dnd.focusOnClick ) {
+					if (ctx.options.dnd.focusOnClick) {
+						// #270
+						var node = $.ui.fancytree.getNode(event);
+						if (node) {
+							node.debug(
+								"Re-enable focus that was prevented by jQuery UI draggable."
+							);
+							// node.setFocus();
+							// $(node.span).closest(":tabbable").focus();
+							// $(event.target).trigger("focus");
+							// $(event.target).closest(":tabbable").trigger("focus");
+						}
+						setTimeout(function () {
+							// #300
+							$(event.target).closest(":tabbable").focus();
+						}, 10);
+					}
+				});
+			}
+			_initDragAndDrop(tree);
+		},
+		/* Display drop marker according to hitMode ('after', 'before', 'over'). */
+		_setDndStatus: function (
+			sourceNode,
+			targetNode,
+			helper,
+			hitMode,
+			accept
+		) {
+			var markerOffsetX,
+				pos,
+				markerAt = "center",
+				instData = this._local,
+				dndOpt = this.options.dnd,
+				glyphOpt = this.options.glyph,
+				$source = sourceNode ? $(sourceNode.span) : null,
+				$target = $(targetNode.span),
+				$targetTitle = $target.find("span.fancytree-title");
+
+			if (!instData.$dropMarker) {
+				instData.$dropMarker = $(
+					"<div id='fancytree-drop-marker'></div>"
+				)
+					.hide()
+					.css({ "z-index": 1000 })
+					.prependTo($(this.$div).parent());
+				//                .prependTo("body");
+
+				if (glyphOpt) {
+					instData.$dropMarker.addClass(
+						glyphOpt.map._addClass + " " + glyphOpt.map.dropMarker
+					);
+				}
+			}
+			if (
+				hitMode === "after" ||
+				hitMode === "before" ||
+				hitMode === "over"
+			) {
+				markerOffsetX = dndOpt.dropMarkerOffsetX || 0;
+				switch (hitMode) {
+					case "before":
+						markerAt = "top";
+						markerOffsetX += dndOpt.dropMarkerInsertOffsetX || 0;
+						break;
+					case "after":
+						markerAt = "bottom";
+						markerOffsetX += dndOpt.dropMarkerInsertOffsetX || 0;
+						break;
+				}
+
+				pos = {
+					my: "left" + offsetString(markerOffsetX) + " center",
+					at: "left " + markerAt,
+					of: $targetTitle,
+				};
+				if (this.options.rtl) {
+					pos.my = "right" + offsetString(-markerOffsetX) + " center";
+					pos.at = "right " + markerAt;
+				}
+				instData.$dropMarker
+					.toggleClass(classDropAfter, hitMode === "after")
+					.toggleClass(classDropOver, hitMode === "over")
+					.toggleClass(classDropBefore, hitMode === "before")
+					.toggleClass("fancytree-rtl", !!this.options.rtl)
+					.show()
+					.position($.ui.fancytree.fixPositionOptions(pos));
+			} else {
+				instData.$dropMarker.hide();
+			}
+			if ($source) {
+				$source
+					.toggleClass(classDropAccept, accept === true)
+					.toggleClass(classDropReject, accept === false);
+			}
+			$target
+				.toggleClass(
+					classDropTarget,
+					hitMode === "after" ||
+						hitMode === "before" ||
+						hitMode === "over"
+				)
+				.toggleClass(classDropAfter, hitMode === "after")
+				.toggleClass(classDropBefore, hitMode === "before")
+				.toggleClass(classDropAccept, accept === true)
+				.toggleClass(classDropReject, accept === false);
+
+			helper
+				.toggleClass(classDropAccept, accept === true)
+				.toggleClass(classDropReject, accept === false);
+		},
+
+		/*
+		 * Handles drag'n'drop functionality.
+		 *
+		 * A standard jQuery drag-and-drop process may generate these calls:
+		 *
+		 * start:
+		 *     _onDragEvent("start", sourceNode, null, event, ui, draggable);
+		 * drag:
+		 *     _onDragEvent("leave", prevTargetNode, sourceNode, event, ui, draggable);
+		 *     _onDragEvent("over", targetNode, sourceNode, event, ui, draggable);
+		 *     _onDragEvent("enter", targetNode, sourceNode, event, ui, draggable);
+		 * stop:
+		 *     _onDragEvent("drop", targetNode, sourceNode, event, ui, draggable);
+		 *     _onDragEvent("leave", targetNode, sourceNode, event, ui, draggable);
+		 *     _onDragEvent("stop", sourceNode, null, event, ui, draggable);
+		 */
+		_onDragEvent: function (
+			eventName,
+			node,
+			otherNode,
+			event,
+			ui,
+			draggable
+		) {
+			// if(eventName !== "over"){
+			// 	this.debug("tree.ext.dnd._onDragEvent(%s, %o, %o) - %o", eventName, node, otherNode, this);
+			// }
+			var accept,
+				nodeOfs,
+				parentRect,
+				rect,
+				relPos,
+				relPos2,
+				enterResponse,
+				hitMode,
+				r,
+				opts = this.options,
+				dnd = opts.dnd,
+				ctx = this._makeHookContext(node, event, {
+					otherNode: otherNode,
+					ui: ui,
+					draggable: draggable,
+				}),
+				res = null,
+				self = this,
+				$nodeTag = $(node.span);
+
+			if (dnd.smartRevert) {
+				draggable.options.revert = "invalid";
+			}
+
+			switch (eventName) {
+				case "start":
+					if (node.isStatusNode()) {
+						res = false;
+					} else if (dnd.dragStart) {
+						res = dnd.dragStart(node, ctx);
+					}
+					if (res === false) {
+						this.debug("tree.dragStart() cancelled");
+						//draggable._clear();
+						// NOTE: the return value seems to be ignored (drag is not cancelled, when false is returned)
+						// TODO: call this._cancelDrag()?
+						ui.helper.trigger("mouseup").hide();
+					} else {
+						if (dnd.smartRevert) {
+							// #567, #593: fix revert position
+							// rect = node.li.getBoundingClientRect();
+							rect =
+								node[
+									ctx.tree.nodeContainerAttrName
+								].getBoundingClientRect();
+							parentRect = $(
+								draggable.options.appendTo
+							)[0].getBoundingClientRect();
+							draggable.originalPosition.left = Math.max(
+								0,
+								rect.left - parentRect.left
+							);
+							draggable.originalPosition.top = Math.max(
+								0,
+								rect.top - parentRect.top
+							);
+						}
+						$nodeTag.addClass("fancytree-drag-source");
+						// Register global handlers to allow cancel
+						$(document).on(
+							"keydown.fancytree-dnd,mousedown.fancytree-dnd",
+							function (event) {
+								// node.tree.debug("dnd global event", event.type, event.which);
+								if (
+									event.type === "keydown" &&
+									event.which === $.ui.keyCode.ESCAPE
+								) {
+									self.ext.dnd._cancelDrag();
+								} else if (event.type === "mousedown") {
+									self.ext.dnd._cancelDrag();
+								}
+							}
+						);
+					}
+					break;
+
+				case "enter":
+					if (
+						dnd.preventRecursiveMoves &&
+						node.isDescendantOf(otherNode)
+					) {
+						r = false;
+					} else {
+						r = dnd.dragEnter ? dnd.dragEnter(node, ctx) : null;
+					}
+					if (!r) {
+						// convert null, undefined, false to false
+						res = false;
+					} else if (Array.isArray(r)) {
+						// TODO: also accept passing an object of this format directly
+						res = {
+							over: $.inArray("over", r) >= 0,
+							before: $.inArray("before", r) >= 0,
+							after: $.inArray("after", r) >= 0,
+						};
+					} else {
+						res = {
+							over: r === true || r === "over",
+							before: r === true || r === "before",
+							after: r === true || r === "after",
+						};
+					}
+					ui.helper.data("enterResponse", res);
+					// this.debug("helper.enterResponse: %o", res);
+					break;
+
+				case "over":
+					enterResponse = ui.helper.data("enterResponse");
+					hitMode = null;
+					if (enterResponse === false) {
+						// Don't call dragOver if onEnter returned false.
+						//                break;
+					} else if (typeof enterResponse === "string") {
+						// Use hitMode from onEnter if provided.
+						hitMode = enterResponse;
+					} else {
+						// Calculate hitMode from relative cursor position.
+						nodeOfs = $nodeTag.offset();
+						relPos = {
+							x: event.pageX - nodeOfs.left,
+							y: event.pageY - nodeOfs.top,
+						};
+						relPos2 = {
+							x: relPos.x / $nodeTag.width(),
+							y: relPos.y / $nodeTag.height(),
+						};
+
+						if (enterResponse.after && relPos2.y > 0.75) {
+							hitMode = "after";
+						} else if (
+							!enterResponse.over &&
+							enterResponse.after &&
+							relPos2.y > 0.5
+						) {
+							hitMode = "after";
+						} else if (enterResponse.before && relPos2.y <= 0.25) {
+							hitMode = "before";
+						} else if (
+							!enterResponse.over &&
+							enterResponse.before &&
+							relPos2.y <= 0.5
+						) {
+							hitMode = "before";
+						} else if (enterResponse.over) {
+							hitMode = "over";
+						}
+						// Prevent no-ops like 'before source node'
+						// TODO: these are no-ops when moving nodes, but not in copy mode
+						if (dnd.preventVoidMoves) {
+							if (node === otherNode) {
+								this.debug(
+									"    drop over source node prevented"
+								);
+								hitMode = null;
+							} else if (
+								hitMode === "before" &&
+								otherNode &&
+								node === otherNode.getNextSibling()
+							) {
+								this.debug(
+									"    drop after source node prevented"
+								);
+								hitMode = null;
+							} else if (
+								hitMode === "after" &&
+								otherNode &&
+								node === otherNode.getPrevSibling()
+							) {
+								this.debug(
+									"    drop before source node prevented"
+								);
+								hitMode = null;
+							} else if (
+								hitMode === "over" &&
+								otherNode &&
+								otherNode.parent === node &&
+								otherNode.isLastSibling()
+							) {
+								this.debug(
+									"    drop last child over own parent prevented"
+								);
+								hitMode = null;
+							}
+						}
+						//                this.debug("hitMode: %s - %s - %s", hitMode, (node.parent === otherNode), node.isLastSibling());
+						ui.helper.data("hitMode", hitMode);
+					}
+					// Auto-expand node (only when 'over' the node, not 'before', or 'after')
+					if (
+						hitMode !== "before" &&
+						hitMode !== "after" &&
+						dnd.autoExpandMS &&
+						node.hasChildren() !== false &&
+						!node.expanded &&
+						(!dnd.dragExpand || dnd.dragExpand(node, ctx) !== false)
+					) {
+						node.scheduleAction("expand", dnd.autoExpandMS);
+					}
+					if (hitMode && dnd.dragOver) {
+						// TODO: http://code.google.com/p/dynatree/source/detail?r=625
+						ctx.hitMode = hitMode;
+						res = dnd.dragOver(node, ctx);
+					}
+					accept = res !== false && hitMode !== null;
+					if (dnd.smartRevert) {
+						draggable.options.revert = !accept;
+					}
+					this._local._setDndStatus(
+						otherNode,
+						node,
+						ui.helper,
+						hitMode,
+						accept
+					);
+					break;
+
+				case "drop":
+					hitMode = ui.helper.data("hitMode");
+					if (hitMode && dnd.dragDrop) {
+						ctx.hitMode = hitMode;
+						dnd.dragDrop(node, ctx);
+					}
+					break;
+
+				case "leave":
+					// Cancel pending expand request
+					node.scheduleAction("cancel");
+					ui.helper.data("enterResponse", null);
+					ui.helper.data("hitMode", null);
+					this._local._setDndStatus(
+						otherNode,
+						node,
+						ui.helper,
+						"out",
+						undefined
+					);
+					if (dnd.dragLeave) {
+						dnd.dragLeave(node, ctx);
+					}
+					break;
+
+				case "stop":
+					$nodeTag.removeClass("fancytree-drag-source");
+					$(document).off(".fancytree-dnd");
+					if (dnd.dragStop) {
+						dnd.dragStop(node, ctx);
+					}
+					break;
+
+				default:
+					$.error("Unsupported drag event: " + eventName);
+			}
+			return res;
+		},
+
+		_cancelDrag: function () {
+			var dd = $.ui.ddmanager.current;
+			if (dd) {
+				dd.cancel();
+			}
+		},
+	});
+	// Value returned by `require('jquery.fancytree..')`
+	return $.ui.fancytree;
+}); // End of closure
+
+/*!
  * jquery.fancytree.dnd5.js
  *
  * Drag-and-drop support (native HTML5).
  * (Extension module for jquery.fancytree.js: https://github.com/mar10/fancytree/)
  *
- * Copyright (c) 2008-2021, Martin Wendt (https://wwWendt.de)
+ * Copyright (c) 2008-2023, Martin Wendt (https://wwWendt.de)
  *
  * Released under the MIT license
  * https://github.com/mar10/fancytree/wiki/LicenseInfo
  *
- * @version 2.38.2
- * @date 2022-06-30T18:24:06Z
+ * @version 2.38.3
+ * @date 2023-02-01T20:52:50Z
  */
 
 /*
@@ -10620,7 +9959,7 @@
 
 	$.ui.fancytree.registerExtension({
 		name: "dnd5",
-		version: "2.38.2",
+		version: "2.38.3",
 		// Default options for this extension.
 		options: {
 			autoExpandMS: 1500, // Expand nodes after n milliseconds of hovering
@@ -10748,20 +10087,19 @@
 	return $.ui.fancytree;
 }); // End of closure
 
-
-/*! Extension 'jquery.fancytree.edit.js' *//*!
+/*!
  * jquery.fancytree.edit.js
  *
  * Make node titles editable.
  * (Extension module for jquery.fancytree.js: https://github.com/mar10/fancytree/)
  *
- * Copyright (c) 2008-2021, Martin Wendt (https://wwWendt.de)
+ * Copyright (c) 2008-2023, Martin Wendt (https://wwWendt.de)
  *
  * Released under the MIT license
  * https://github.com/mar10/fancytree/wiki/LicenseInfo
  *
- * @version 2.38.2
- * @date 2022-06-30T18:24:06Z
+ * @version 2.38.3
+ * @date 2023-02-01T20:52:50Z
  */
 
 (function (factory) {
@@ -11054,7 +10392,7 @@
 	 */
 	$.ui.fancytree.registerExtension({
 		name: "edit",
-		version: "2.38.2",
+		version: "2.38.3",
 		// Default options for this extension.
 		options: {
 			adjustWidthOfs: 4, // null: don't adjust input size to content
@@ -11153,20 +10491,19 @@
 	return $.ui.fancytree;
 }); // End of closure
 
-
-/*! Extension 'jquery.fancytree.filter.js' *//*!
+/*!
  * jquery.fancytree.filter.js
  *
  * Remove or highlight tree nodes, based on a filter.
  * (Extension module for jquery.fancytree.js: https://github.com/mar10/fancytree/)
  *
- * Copyright (c) 2008-2021, Martin Wendt (https://wwWendt.de)
+ * Copyright (c) 2008-2023, Martin Wendt (https://wwWendt.de)
  *
  * Released under the MIT license
  * https://github.com/mar10/fancytree/wiki/LicenseInfo
  *
- * @version 2.38.2
- * @date 2022-06-30T18:24:06Z
+ * @version 2.38.3
+ * @date 2023-02-01T20:52:50Z
  */
 
 (function (factory) {
@@ -11596,7 +10933,7 @@
 	 */
 	$.ui.fancytree.registerExtension({
 		name: "filter",
-		version: "2.38.2",
+		version: "2.38.3",
 		// Default options for this extension.
 		options: {
 			autoApply: true, // Re-apply last filter if lazy data is loaded
@@ -11704,20 +11041,19 @@
 	return $.ui.fancytree;
 }); // End of closure
 
-
-/*! Extension 'jquery.fancytree.glyph.js' *//*!
+/*!
  * jquery.fancytree.glyph.js
  *
  * Use glyph-fonts, ligature-fonts, or SVG icons instead of icon sprites.
  * (Extension module for jquery.fancytree.js: https://github.com/mar10/fancytree/)
  *
- * Copyright (c) 2008-2021, Martin Wendt (https://wwWendt.de)
+ * Copyright (c) 2008-2023, Martin Wendt (https://wwWendt.de)
  *
  * Released under the MIT license
  * https://github.com/mar10/fancytree/wiki/LicenseInfo
  *
- * @version 2.38.2
- * @date 2022-06-30T18:24:06Z
+ * @version 2.38.3
+ * @date 2023-02-01T20:52:50Z
  */
 
 (function (factory) {
@@ -11919,7 +11255,7 @@
 
 	$.ui.fancytree.registerExtension({
 		name: "glyph",
-		version: "2.38.2",
+		version: "2.38.3",
 		// Default options for this extension.
 		options: {
 			preset: null, // 'awesome3', 'awesome4', 'bootstrap3', 'material'
@@ -12060,20 +11396,19 @@
 	return $.ui.fancytree;
 }); // End of closure
 
-
-/*! Extension 'jquery.fancytree.gridnav.js' *//*!
+/*!
  * jquery.fancytree.gridnav.js
  *
  * Support keyboard navigation for trees with embedded input controls.
  * (Extension module for jquery.fancytree.js: https://github.com/mar10/fancytree/)
  *
- * Copyright (c) 2008-2021, Martin Wendt (https://wwWendt.de)
+ * Copyright (c) 2008-2023, Martin Wendt (https://wwWendt.de)
  *
  * Released under the MIT license
  * https://github.com/mar10/fancytree/wiki/LicenseInfo
  *
- * @version 2.38.2
- * @date 2022-06-30T18:24:06Z
+ * @version 2.38.3
+ * @date 2023-02-01T20:52:50Z
  */
 
 (function (factory) {
@@ -12190,7 +11525,7 @@
 	 */
 	$.ui.fancytree.registerExtension({
 		name: "gridnav",
-		version: "2.38.2",
+		version: "2.38.3",
 		// Default options for this extension.
 		options: {
 			autofocusInput: false, // Focus first embedded input if node gets activated
@@ -12280,20 +11615,19 @@
 	return $.ui.fancytree;
 }); // End of closure
 
-
-/*! Extension 'jquery.fancytree.multi.js' *//*!
+/*!
  * jquery.fancytree.multi.js
  *
  * Allow multiple selection of nodes  by mouse or keyboard.
  * (Extension module for jquery.fancytree.js: https://github.com/mar10/fancytree/)
  *
- * Copyright (c) 2008-2021, Martin Wendt (https://wwWendt.de)
+ * Copyright (c) 2008-2023, Martin Wendt (https://wwWendt.de)
  *
  * Released under the MIT license
  * https://github.com/mar10/fancytree/wiki/LicenseInfo
  *
- * @version 2.38.2
- * @date 2022-06-30T18:24:06Z
+ * @version 2.38.3
+ * @date 2023-02-01T20:52:50Z
  */
 
 (function (factory) {
@@ -12322,7 +11656,7 @@
 	 */
 	$.ui.fancytree.registerExtension({
 		name: "multi",
-		version: "2.38.2",
+		version: "2.38.3",
 		// Default options for this extension.
 		options: {
 			allowNoSelect: false, //
@@ -12410,8 +11744,7 @@
 	return $.ui.fancytree;
 }); // End of closure
 
-
-/*! Extension 'jquery.fancytree.persist.js' *//*!
+/*!
  * jquery.fancytree.persist.js
  *
  * Persist tree status in cookiesRemove or highlight tree nodes, based on a filter.
@@ -12419,13 +11752,13 @@
  *
  * @depends: js-cookie or jquery-cookie
  *
- * Copyright (c) 2008-2021, Martin Wendt (https://wwWendt.de)
+ * Copyright (c) 2008-2023, Martin Wendt (https://wwWendt.de)
  *
  * Released under the MIT license
  * https://github.com/mar10/fancytree/wiki/LicenseInfo
  *
- * @version 2.38.2
- * @date 2022-06-30T18:24:06Z
+ * @version 2.38.3
+ * @date 2023-02-01T20:52:50Z
  */
 
 (function (factory) {
@@ -12636,7 +11969,7 @@
 	 */
 	$.ui.fancytree.registerExtension({
 		name: "persist",
-		version: "2.38.2",
+		version: "2.38.3",
 		// Default options for this extension.
 		options: {
 			cookieDelimiter: "~",
@@ -12915,20 +12248,19 @@
 	return $.ui.fancytree;
 }); // End of closure
 
-
-/*! Extension 'jquery.fancytree.table.js' *//*!
+/*!
  * jquery.fancytree.table.js
  *
  * Render tree as table (aka 'tree grid', 'table tree').
  * (Extension module for jquery.fancytree.js: https://github.com/mar10/fancytree/)
  *
- * Copyright (c) 2008-2021, Martin Wendt (https://wwWendt.de)
+ * Copyright (c) 2008-2023, Martin Wendt (https://wwWendt.de)
  *
  * Released under the MIT license
  * https://github.com/mar10/fancytree/wiki/LicenseInfo
  *
- * @version 2.38.2
- * @date 2022-06-30T18:24:06Z
+ * @version 2.38.3
+ * @date 2023-02-01T20:52:50Z
  */
 
 (function (factory) {
@@ -13006,7 +12338,7 @@
 
 	$.ui.fancytree.registerExtension({
 		name: "table",
-		version: "2.38.2",
+		version: "2.38.3",
 		// Default options for this extension.
 		options: {
 			checkboxColumnIdx: null, // render the checkboxes into the this column index (default: nodeColumnIdx)
@@ -13461,8 +12793,7 @@
 	return $.ui.fancytree;
 }); // End of closure
 
-
-/*! Extension 'jquery.fancytree.themeroller.js' *//*!
+/*!
  * jquery.fancytree.themeroller.js
  *
  * Enable jQuery UI ThemeRoller styles.
@@ -13470,13 +12801,13 @@
  *
  * @see http://jqueryui.com/themeroller/
  *
- * Copyright (c) 2008-2021, Martin Wendt (https://wwWendt.de)
+ * Copyright (c) 2008-2023, Martin Wendt (https://wwWendt.de)
  *
  * Released under the MIT license
  * https://github.com/mar10/fancytree/wiki/LicenseInfo
  *
- * @version 2.38.2
- * @date 2022-06-30T18:24:06Z
+ * @version 2.38.3
+ * @date 2023-02-01T20:52:50Z
  */
 
 (function (factory) {
@@ -13499,7 +12830,7 @@
 	 */
 	$.ui.fancytree.registerExtension({
 		name: "themeroller",
-		version: "2.38.2",
+		version: "2.38.3",
 		// Default options for this extension.
 		options: {
 			activeClass: "ui-state-active", // Class added to active node
@@ -13588,19 +12919,18 @@
 	return $.ui.fancytree;
 }); // End of closure
 
-
-/*! Extension 'jquery.fancytree.wide.js' *//*!
+/*!
  * jquery.fancytree.wide.js
  * Support for 100% wide selection bars.
  * (Extension module for jquery.fancytree.js: https://github.com/mar10/fancytree/)
  *
- * Copyright (c) 2008-2021, Martin Wendt (https://wwWendt.de)
+ * Copyright (c) 2008-2023, Martin Wendt (https://wwWendt.de)
  *
  * Released under the MIT license
  * https://github.com/mar10/fancytree/wiki/LicenseInfo
  *
- * @version 2.38.2
- * @date 2022-06-30T18:24:06Z
+ * @version 2.38.3
+ * @date 2023-02-01T20:52:50Z
  */
 
 (function (factory) {
@@ -13730,7 +13060,7 @@
 	 */
 	$.ui.fancytree.registerExtension({
 		name: "wide",
-		version: "2.38.2",
+		version: "2.38.3",
 		// Default options for this extension.
 		options: {
 			iconWidth: null, // Adjust this if @fancy-icon-width != "16px"
@@ -13846,7 +13176,3 @@
 	// Value returned by `require('jquery.fancytree..')`
 	return $.ui.fancytree;
 }); // End of closure
-
-// Value returned by `require('jquery.fancytree')`
-return $.ui.fancytree;
-}));  // End of closure
