@@ -6,7 +6,7 @@ let fancyTree = function ( apex, $ ) {
         featureDetails: {
             name: "APEX-Fancy-Tree-Select",
             info: {
-                scriptVersion: "23.07.10",
+                scriptVersion: "22.02.20",
                 utilVersion: "22.11.28",
                 url: "https://github.com/RonnyWeiss",
                 license: "MIT"
@@ -682,6 +682,16 @@ let fancyTree = function ( apex, $ ) {
                 }
             }
 
+            function setExpandCollapseAriaLabel ( pNode ) {
+                const ariaLabelExpand = apex.lang.getMessage( "TREE.EXPAND_ALL_BELOW" ),
+                      ariaLabelCollapse = apex.lang.getMessage( "TREE.COLLAPSE_ALL_BELOW" ),
+                      expandSelector = `span.fancytree-expander.fa.${configJSON.iconExpanderClosed}`,
+                      collapseSelector = `span.fancytree-expander.fa.${configJSON.iconExpanderOpen}`;
+
+                $( pNode ).find( expandSelector ).attr( "aria-label", ariaLabelExpand );
+                $( pNode ).find( collapseSelector ).attr( "aria-label", ariaLabelCollapse );
+            }
+
             function drawTree( data ) {
                 const _root = prepareData( data );
 
@@ -692,10 +702,11 @@ let fancyTree = function ( apex, $ ) {
                         highlightClones: true
                     },
                     nodata: false,
+                    aria: true,
                     activeVisible: configJSON.openParentOfActiveNode,
                     escapeTitles: configJSON.escapeHTML,
                     focusOnSelect: true,
-                    titlesTabbable: true,
+                    titlesTabbable: false,
                     checkbox: configJSON.enableCheckBox,
                     toggleEffect: configJSON.animationDuration,
                     selectMode: configJSON.selectMode,
@@ -746,12 +757,15 @@ let fancyTree = function ( apex, $ ) {
                             saveExpandedNodes();
                             setItems();
                         }
+                        setExpandCollapseAriaLabel ( configJSON.regionID );
                     },
                     collapse: function ( event, data ) {
+                        setExpandCollapseAriaLabel ( data.node.li );
                         saveExpandedNodes();
                         $( eventsBindSel ).trigger( "collapsed", data.node );
                     },
                     expand: function ( event, data ) {
+                        setExpandCollapseAriaLabel ( data.node.li );
                         markNodesWihChildren();
                         saveExpandedNodes();
                         $( eventsBindSel ).trigger( "expanded", data.node );
