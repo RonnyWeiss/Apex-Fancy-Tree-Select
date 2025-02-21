@@ -322,6 +322,7 @@ let fancyTree = function ( apex, $ ) {
                     }
                 },
                 "selectMode": 2,
+                "selectOnlyOnePerGroup": false,
                 "setActiveNode": true,
                 "setItemsOnInit": false
             };
@@ -710,6 +711,7 @@ let fancyTree = function ( apex, $ ) {
                     checkbox: configJSON.enableCheckBox,
                     toggleEffect: configJSON.animationDuration,
                     selectMode: configJSON.selectMode,
+                    selectOnlyOnePerGroup: configJSON.selectOnlyOnePerGroup, // select only one child per group if selectMode is 2
                     debugLevel: 0, // 0:quiet, 1:normal, 2:debug
                     keyboard: configJSON.enableKeyBoard, // Support keyboard navigation.
                     quicksearch: configJSON.enableQuicksearch, // Navigate to next node by typing the first letters.
@@ -772,17 +774,31 @@ let fancyTree = function ( apex, $ ) {
                     },
                     // if select an item check different types from config json and set value to the items
                     select: function ( event, data ) {
-                        queueMicrotask( function() {
-                            markNodesWihChildren( true );
-                            if ( "" + data.node.extraClasses !== "" ) {
-                                if ( $( data.node.li ).find( ".fancytree-node" ).hasClass( "fancytree-selected" ) ) {
-                                    $( "." + data.node.extraClasses ).addClass( "fancytree-selected" );
-                                } else {
-                                    $( "." + data.node.extraClasses ).removeClass( "fancytree-selected" );
+                        queueMicrotask(function () {
+                            let node = data.node;
+                            let parent = node.parent;
+                            if (configJSON.selectMode === 2 && configJSON.selectOnlyOnePerGroup === true) {
+                                // unselect all other child elements of parent
+                                if (parent && !parent.isRoot()) {
+                                    parent.children.forEach(child => {
+                                        if (child !== node && child.isSelected()) {
+                                            child.setSelected(false, { noEvents: true });
+                                        }
+                                    });
                                 }
                             }
+
+                            markNodesWihChildren(true);
+                            if ("" + node.extraClasses !== "") {
+                                if ($(node.li).find(".fancytree-node").hasClass("fancytree-selected")) {
+                                    $("." + node.extraClasses).addClass("fancytree-selected");
+                                } else {
+                                    $("." + node.extraClasses).removeClass("fancytree-selected");
+                                }
+                            }
+
                             setItems();
-                        } );
+                        });
                     },
                     click: function ( event, data ) {
                         if ( data.targetType === "title" || data.targetType === "icon" ) {
